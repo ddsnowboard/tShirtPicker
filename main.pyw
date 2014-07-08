@@ -1,9 +1,9 @@
 import sqlite3
 import datetime
 import random
-import tkinter
+import tkinter as tk
 db = sqlite3.connect("shirts.db")
-root = tkinter.Tk()
+root = tk.Tk()
 c = db.cursor()
 all = '*'
 date_format = "%Y-%m-%d"
@@ -55,14 +55,40 @@ def onOpen():
 	try:
 		for i in select(all):
 			shirts.append(Shirt(i[0], i[1], i[2]))
+		
 	except:
 		c.execute("create table shirts (id, description, lasttime);")
 		onOpen()
 onOpen()
-addButton = tkinter.Button(root, text="Add a shirt")
-addButton.pack(side='left', padx = 5, pady = 5)
-updateButton = tkinter.Button(root, text="Update a shirt")
-updateButton.pack(side='left', padx = 5, pady = 5)
+root.title("T-Shirt Picker")
+buttons = tk.Frame(root, height=15)
+pickButton = tk.Button(buttons, text="Pick today's shirt")
+pickButton.pack(side='left')
+addButton = tk.Button(buttons, text="Add a shirt")
+addButton.pack(side='left')
+updateButton = tk.Button(buttons, text="Update a shirt")
+updateButton.pack(side='left')
+deleteButton = tk.Button(buttons, text='Delete a shirt')
+deleteButton.pack(side='left')
+buttons.pack(expand=1, pady=4)
+idFrame = tk.Frame(root, width=10, height=40)
+idLabel = tk.Label(idFrame, text="ID")
+idLabel.pack()
+idColumn = tk.Listbox(idFrame, bg="#ffffff", bd=1, height=40, width=10)
+idColumn.pack(fill='x', expand=1, side='top')
+idFrame.pack(side='left')
+descriptionFrame = tk.Frame(root, width=40, height=40)
+descriptionLabel = tk.Label(descriptionFrame, text="Description")
+descriptionLabel.pack()
+descriptionColumn = tk.Listbox(descriptionFrame, bg="#ffffff", bd=1, height=40, width=40)
+descriptionColumn.pack()
+descriptionFrame.pack(side='left')
+dateFrame = tk.Frame(root, height=40, width=15)
+dateLabel = tk.Label(dateFrame, text="Last Worn")
+dateLabel.pack()
+dateColumn = tk.Listbox(dateFrame, height=40, width=15)
+dateColumn.pack()
+dateFrame.pack(side='left')
 root.mainloop()
 
 
