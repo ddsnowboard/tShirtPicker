@@ -34,7 +34,10 @@ class Shirt:
 		self.description = description
 		self.lastTime = lastTime
 		if id == 0:
-			self.id = select(all)[-1][0]+1
+			if len(select(all)) == 0:
+				self.id = 1
+			else:
+				self.id = select(all)[-1][0]+1
 			insert(self.id, self.description, self.lastTime)
 			db.commit()
 		else: 
@@ -44,8 +47,12 @@ class Shirt:
 		update(self.id, datetime.date.today().strftime(date_format))
 		db.commit()
 def onOpen():
-	for i in select(all):
-		shirts.append(Shirt(i[0], i[1], i[2]))
+	try:
+		for i in select(all):
+			shirts.append(Shirt(i[0], i[1], i[2]))
+	except:
+		c.execute("create table shirts (id, description, lasttime);")
+		onOpen()
 onOpen()
 while True:
 	i = input("\n\n\n\nType PICK to pick a new shirt for today, NEW to add a shirt, UPDATE to update a shirt, LIST to list all shirts, DELETE to delete a shirt, or EXIT to exit. \n")
