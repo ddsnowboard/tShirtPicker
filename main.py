@@ -10,6 +10,10 @@ shirts = []
 def insert(id, description, lasttime):
 	c.execute("insert into shirts (id, description, lasttime) VALUES (" + str(id) + ", '" + description + "', '" + lasttime + "');")
 	db.commit()
+def list():
+	print("Here are your shirts \nID   Description   Last worn")
+	for i in shirts: 
+		print(', '.join([str(i.id), i.description, i.lastTime]))
 def select(rows, params = ''):
 	end = []
 	if params == '': 
@@ -23,14 +27,11 @@ def update(id, lasttime):
 	c.execute("update shirts SET lasttime = '" + lasttime + "' WHERE id = "+ str(id) +";")
 	db.commit()
 def pick():
-	if len(shirts) == 1:
-		return shirts[0]
-	else:
-		weighted = []
-		for i in shirts:
-			for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3):
-				weighted.append(i)
-		return random.choice(weighted)
+	weighted = []
+	for i in shirts:
+		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3+1):
+			weighted.append(i)
+	return random.choice(weighted)
 class Shirt:
 	def __init__(self, id, description, lastTime):
 		global db
@@ -78,9 +79,7 @@ while True:
 			elif n.lower() == 'n':
 				print("Ok then.")
 	elif i.lower() == 'update':
-		print("Here are your shirts \nID   Description   Last worn")
-		for i in select(all):
-			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+		list()
 		choice = input("Type the ID of the shirt you want to change\n")
 		inp = input("Do you want to change the last worn DATE or the DESCRIPTION?\n")
 		if inp.lower()== 'description':
@@ -91,13 +90,9 @@ while True:
 			newDate = input("Type the new date you want to set in YYYY-MM-DD format\n")
 			update(choice, newDate)
 	elif i.lower() == 'list':
-		print("Here are your shirts \nID   Description   Last worn")
-		for i in select(all):
-			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+		list()
 	elif i.lower() == 'delete':
-		print("Here are your shirts \nID   Description   Last worn")
-		for i in select(all):
-			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+		list()
 		delId = input("What is the ID of the shirt you want to delete?\n")
 		yn = input("Do you really want to delete? YES or NO\n")
 		if yn.lower() == 'yes':
