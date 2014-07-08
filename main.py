@@ -1,0 +1,99 @@
+import sqlite3
+import datetime
+import random
+db = sqlite3.connect("shirts.db")
+c = db.cursor()
+all = '*'
+date_format = "%Y-%m-%d"
+shirts = []
+# MAKE FUNCTION TO PRINT OUT SHIRTS
+def insert(id, description, lasttime):
+	c.execute("insert into shirts (id, description, lasttime) VALUES (" + str(id) + ", '" + description + "', '" + lasttime + "');")
+	db.commit()
+def select(rows, params = ''):
+	end = []
+	if params == '': 
+		for i in c.execute("select " + rows + " from shirts;"):
+			end.append(i)
+	else:
+		for i in c.execute("select " + rows + " from shirts WHERE " + params+';'):
+			end.append(i)
+	return end
+def update(id, lasttime):
+	c.execute("update shirts SET lasttime = '" + lasttime + "' WHERE id = "+ str(id) +";")
+	db.commit()
+def pick():
+	weighted = []
+	for i in shirts:
+		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3):
+			weighted.append(i)
+	return random.choice(weighted)
+class Shirt:
+	def __init__(self, id, description, lastTime):
+		global db
+		self.description = description
+		self.lastTime = lastTime
+		if id == 0:
+			self.id = select(all)[-1][0]+1
+			insert(self.id, self.description, self.lastTime)
+			db.commit()
+		else: 
+			self.id = id
+			
+	def wearToday(self):
+		update(self.id, datetime.date.today().strftime(date_format))
+		db.commit()
+def onOpen():
+	for i in select(all):
+		shirts.append(Shirt(i[0], i[1], i[2]))
+onOpen()
+while True:
+	i = input("\n\n\n\nType PICK to pick a new shirt for today, NEW to add a shirt, UPDATE to update a shirt, LIST to list all shirts, DELETE to delete a shirt, or EXIT to exit. \n")
+	if i.lower() == "new":
+		descrip = input("Give a short description of the shirt \n")
+		last = input("When was the last time you wore the shirt, in YYYY-MM-DD format? Or leave it blank if it was never worn \n")
+		if last == '':
+			last = (datetime.datetime.today()-datetime.timedelta(days=14)).strftime(date_format)
+		shirts.append(Shirt(0, descrip, last))
+	elif i.lower() == "pick":
+		done = False
+		while not done:
+			choice = pick()
+			print("Today's shirt is " + choice.description +". Do you want to wear it? y/n")
+			n = input()
+			if n.lower() == 'y':
+				print("Ok!")
+				choice.wearToday()
+				done = True
+			elif n.lower() == 'n':
+				print("Ok then.")
+	elif i.lower() == 'update':
+		print("Here are your shirts \nID   Description   Last worn")
+		for i in select(all):
+			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+		choice = input("Type the ID of the shirt you want to change\n")
+		inp = input("Do you want to change the last worn DATE or the DESCRIPTION?\n")
+		if inp.lower()== 'description':
+			newDescrip = input("Type the new description you want\n")
+			c.execute("update shirts SET description='"+newDescrip+"' WHERE id = "+str(choice)+";")
+			db.commit()
+		elif inp.lower() == 'date':
+			newDate = input("Type the new date you want to set in YYYY-MM-DD format\n")
+			update(choice, newDate)
+	elif i.lower() == 'list':
+		print("Here are your shirts \nID   Description   Last worn")
+		for i in select(all):
+			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+	elif i.lower() == 'delete':
+		print("Here are your shirts \nID   Description   Last worn")
+		for i in select(all):
+			print(str(i[0])+', '+ i[1]+', ' + i[2]+'\n')
+		delId = input("What is the ID of the shirt you want to delete?\n")
+		yn = input("Do you really want to delete? YES or NO\n")
+		if yn.lower() == 'yes':
+			c.execute("delete from shirts where id = "+str(delId) +";")
+			print("Successfully deleted")
+	elif i.lower() == 'exit':
+		break
+	else: 
+		print("That's not an available command. Sorry!")
