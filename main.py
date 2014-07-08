@@ -23,11 +23,14 @@ def update(id, lasttime):
 	c.execute("update shirts SET lasttime = '" + lasttime + "' WHERE id = "+ str(id) +";")
 	db.commit()
 def pick():
-	weighted = []
-	for i in shirts:
-		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3):
-			weighted.append(i)
-	return random.choice(weighted)
+	if len(shirts) == 1:
+		return shirts[0]
+	else:
+		weighted = []
+		for i in shirts:
+			for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3):
+				weighted.append(i)
+		return random.choice(weighted)
 class Shirt:
 	def __init__(self, id, description, lastTime):
 		global db
