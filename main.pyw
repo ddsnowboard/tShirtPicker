@@ -2,12 +2,29 @@ import sqlite3
 import datetime
 import random
 import tkinter as tk
+import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
 c = db.cursor()
 all = '*'
 date_format = "%Y-%m-%d"
 shirts = []
+root.title("T-Shirt Picker")
+buttons = tk.Frame(root, height=15)
+pickButton = tk.Button(buttons, text="Pick today's shirt")
+addButton = tk.Button(buttons, text="Add a shirt")
+updateButton = tk.Button(buttons, text="Update a shirt")
+deleteButton = tk.Button(buttons, text='Delete a shirt')
+deleteButton.pack(side='left')
+idFrame = tk.Frame(root, width=10, height=30)
+idLabel = tk.Label(idFrame, text="ID")
+idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0)
+descriptionFrame = tk.Frame(root, width=40, height=30)
+descriptionLabel = tk.Label(descriptionFrame, text="Description")
+descriptionColumn = tk.Listbox(descriptionFrame, bg="#ffffff", bd=1, height=30, width=40, selectmode='single', exportselection=0)
+dateFrame = tk.Frame(root, height=30, width=15)
+dateLabel = tk.Label(dateFrame, text="Last Worn")
+dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0)
 def insert(id, description, lasttime):
 	c.execute("insert into shirts (id, description, lasttime) VALUES (" + str(id) + ", '" + description + "', '" + lasttime + "');")
 	db.commit()
@@ -18,10 +35,10 @@ def list():
 def select(rows, params = ''):
 	end = []
 	if params == '': 
-		for i in c.execute("select " + rows + " from shirts;"):
+		for i in c.execute("select " + rows + " from shirts ORDER BY id;"):
 			end.append(i)
 	else:
-		for i in c.execute("select " + rows + " from shirts WHERE " + params+';'):
+		for i in c.execute("select " + rows + " from shirts WHERE " + params+' ORDER BY id;'):
 			end.append(i)
 	return end
 def update(id, lasttime):
@@ -37,7 +54,10 @@ class Shirt:
 	def __init__(self, id, description, lastTime):
 		global db
 		self.description = description
-		self.lastTime = lastTime
+		if lastTime == '':
+			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime(date_format)
+		else: 
+			self.lastTime = lastTime
 		if id == 0:
 			if len(select(all)) == 0:
 				self.id = 1
@@ -51,42 +71,77 @@ class Shirt:
 	def wearToday(self):
 		update(self.id, datetime.date.today().strftime(date_format))
 		db.commit()
+	def addToList(self):
+		global idColumn, descriptionColumn, dateColumn
+		idColumn.insert('end', self.id)
+		descriptionColumn.insert('end', self.description)
+		dateColumn.insert('end', self.lastTime)
 def onOpen():
 	try:
+		idColumn.delete(0, idColumn.size()-1)
+		dateColumn.delete(0, dateColumn.size()-1)
+		descriptionColumn.delete(0,descriptionColumn.size()-1)
 		for i in select(all):
 			shirts.append(Shirt(i[0], i[1], i[2]))
-		
+		for i in shirts:
+			i.addToList()
 	except:
 		c.execute("create table shirts (id, description, lasttime);")
 		onOpen()
+def clickColumn(event):
+	selection = event.widget.curselection()
+	if selection:
+		if event.widget is not descriptionColumn :
+			descriptionColumn.selection_clear(0, descriptionColumn.size()-1)
+			descriptionColumn.selection_set(selection[0])
+		if event.widget is not dateColumn:
+			dateColumn.selection_clear(0, dateColumn.size()-1)
+			dateColumn.selection_set(selection[0])
+		if event.widget is not idColumn:
+			idColumn.selection_clear(0, idColumn.size()-1)
+			idColumn.selection_set(selection[0])
+def addShirt(event):
+	global dialog, enterDescription, enterDate
+	dialog = tk.Tk()
+	tk.Label(dialog, text='Give a short description of the shirt').pack()
+	enterDescription = tk.Entry(dialog)
+	enterDescription.pack(pady=5)
+	tk.Label(dialog, text='When was the last day you wore the shirt, \napproxamately, in YYYY-MM-DD format? \nOr leave it blank if you don\'t know.').pack()
+	dateDialogFrame = tk.Frame(dialog)
+	enterDate = tk.Entry(dateDialogFrame)
+	enterDate.pack(pady=5, side='left')
+	today = tk.Button(dateDialogFrame, text="Today")
+	today.bind("<Button-1>", insertTodaysDate)
+	today.pack(side='left')
+	dateDialogFrame.pack()
+	okButton = tk.Button(dialog, text="OK")
+	okButton.pack(pady=5)
+	okButton.bind("<Button-1>", finishShirt)
+def insertTodaysDate(event):
+	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
+def finishShirt(event):
+	description = enterDescription.get()
+	date = enterDate.get()
+	if description is not '' and (re.match("\d\d\d\d-\d\d-\d\d",date) or date == ''):
+		shirts.append(Shirt(0, description, date))
+		shirts[-1].addToList()
+		dialog.destroy()
 onOpen()
-root.title("T-Shirt Picker")
-buttons = tk.Frame(root, height=15)
-pickButton = tk.Button(buttons, text="Pick today's shirt")
 pickButton.pack(side='left')
-addButton = tk.Button(buttons, text="Add a shirt")
+addButton.bind("<Button-1>", addShirt)
 addButton.pack(side='left')
-updateButton = tk.Button(buttons, text="Update a shirt")
 updateButton.pack(side='left')
-deleteButton = tk.Button(buttons, text='Delete a shirt')
-deleteButton.pack(side='left')
 buttons.pack(expand=1, pady=4)
-idFrame = tk.Frame(root, width=10, height=40)
-idLabel = tk.Label(idFrame, text="ID")
 idLabel.pack()
-idColumn = tk.Listbox(idFrame, bg="#ffffff", bd=1, height=40, width=10)
-idColumn.pack(fill='x', expand=1, side='top')
+idColumn.bind('<ButtonRelease-1>', clickColumn)
+idColumn.pack()
 idFrame.pack(side='left')
-descriptionFrame = tk.Frame(root, width=40, height=40)
-descriptionLabel = tk.Label(descriptionFrame, text="Description")
 descriptionLabel.pack()
-descriptionColumn = tk.Listbox(descriptionFrame, bg="#ffffff", bd=1, height=40, width=40)
+descriptionColumn.bind('<ButtonRelease-1>', clickColumn)
 descriptionColumn.pack()
 descriptionFrame.pack(side='left')
-dateFrame = tk.Frame(root, height=40, width=15)
-dateLabel = tk.Label(dateFrame, text="Last Worn")
 dateLabel.pack()
-dateColumn = tk.Listbox(dateFrame, height=40, width=15)
+dateColumn.bind('<ButtonRelease-1>', clickColumn)
 dateColumn.pack()
 dateFrame.pack(side='left')
 root.mainloop()
