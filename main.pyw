@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import random
 import tkinter as tk
+from tkinter import messagebox
 import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
@@ -14,8 +15,7 @@ buttons = tk.Frame(root, height=15)
 pickButton = tk.Button(buttons, text="Pick today's shirt")
 addButton = tk.Button(buttons, text="Add a shirt")
 updateButton = tk.Button(buttons, text="Update a shirt")
-deleteButton = tk.Button(buttons, text='Delete a shirt')
-deleteButton.pack(side='left')
+deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
 idFrame = tk.Frame(root, width=10, height=30)
 idLabel = tk.Label(idFrame, text="ID")
 idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0)
@@ -28,10 +28,6 @@ dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exp
 def insert(id, description, lasttime):
 	c.execute("insert into shirts (id, description, lasttime) VALUES (" + str(id) + ", '" + description + "', '" + lasttime + "');")
 	db.commit()
-def list():
-	print("Here are your shirts \nID   Description   Last worn")
-	for i in shirts: 
-		print(', '.join([str(i.id), i.description, i.lastTime]))
 def select(rows, params = ''):
 	end = []
 	if params == '': 
@@ -43,6 +39,9 @@ def select(rows, params = ''):
 	return end
 def update(id, lasttime):
 	c.execute("update shirts SET lasttime = '" + lasttime + "' WHERE id = "+ str(id) +";")
+	db.commit()
+def delete(id):
+	c.execute("delete from shirts WHERE id="+str(id)+';')
 	db.commit()
 def pick():
 	weighted = []
@@ -70,28 +69,32 @@ class Shirt:
 			
 	def wearToday(self):
 		update(self.id, datetime.date.today().strftime(date_format))
+		self.lastTime = datetime.date.today().strftime(date_format)
 		db.commit()
 	def addToList(self):
 		global idColumn, descriptionColumn, dateColumn
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
+def populate():
+	idColumn.delete(0, 'end')
+	dateColumn.delete(0, dateColumn.size()-1)
+	descriptionColumn.delete(0,descriptionColumn.size()-1)
+	for i in shirts:
+		i.addToList()
 def onOpen():
 	try:
-		idColumn.delete(0, idColumn.size()-1)
-		dateColumn.delete(0, dateColumn.size()-1)
-		descriptionColumn.delete(0,descriptionColumn.size()-1)
 		for i in select(all):
 			shirts.append(Shirt(i[0], i[1], i[2]))
-		for i in shirts:
-			i.addToList()
+		populate()
 	except:
 		c.execute("create table shirts (id, description, lasttime);")
 		onOpen()
 def clickColumn(event):
 	selection = event.widget.curselection()
 	if selection:
-		if event.widget is not descriptionColumn :
+		deleteButton.config(state='normal')
+		if event.widget is not descriptionColumn:
 			descriptionColumn.selection_clear(0, descriptionColumn.size()-1)
 			descriptionColumn.selection_set(selection[0])
 		if event.widget is not dateColumn:
@@ -117,8 +120,6 @@ def addShirt(event):
 	okButton = tk.Button(dialog, text="OK")
 	okButton.pack(pady=5)
 	okButton.bind("<Button-1>", finishShirt)
-def insertTodaysDate(event):
-	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
 def finishShirt(event):
 	description = enterDescription.get()
 	date = enterDate.get()
@@ -126,10 +127,32 @@ def finishShirt(event):
 		shirts.append(Shirt(0, description, date))
 		shirts[-1].addToList()
 		dialog.destroy()
+def deleteShirt():
+	global idColumn, descriptionColumn, dateColumn
+	selection = idColumn.curselection()
+	if selection:
+		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+shirts[selection[0]].description+"\"?"):
+			delete(shirts.pop(selection[0]).id)
+			idColumn.delete(selection[0])
+			descriptionColumn.delete(selection[0])
+			dateColumn.delete(selection[0])
+def insertTodaysDate(event):
+	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
+def pickAShirt():
+	one = pick()
+	if tk.messagebox.askyesno("Pick", "Do you want to wear "+one.description+" ?"):
+		one.wearToday()
+		populate()
+		tk.messagebox.showinfo("Yes", "Ok. You're wearing "+one.description+" today.")
+	else:
+		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 onOpen()
+pickButton.config(command=pickAShirt)
 pickButton.pack(side='left')
-addButton.bind("<Button-1>", addShirt)
+addButton.config(command=addShirt)
 addButton.pack(side='left')
+deleteButton.config(command=deleteShirt)
+deleteButton.pack(side='left')
 updateButton.pack(side='left')
 buttons.pack(expand=1, pady=4)
 idLabel.pack()
@@ -154,6 +177,10 @@ root.mainloop()
 
 
 # These are all for the text-based implementation, but I'm working on a GUI.
+# def list():
+	# print("Here are your shirts \nID   Description   Last worn")
+	# for i in shirts: 
+		# print(', '.join([str(i.id), i.description, i.lastTime]))
 # while True:
 	# i = input("Type PICK to pick a new shirt for today, NEW to add a shirt, UPDATE to update a shirt, LIST to list all shirts, DELETE to delete a shirt, or EXIT to exit. \n")
 	# if i.lower() == "new":
