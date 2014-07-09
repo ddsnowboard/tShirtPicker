@@ -146,6 +146,18 @@ def pickAShirt():
 		tk.messagebox.showinfo("Yes", "Ok. You're wearing "+one.description+" today.")
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
+def updateShirt():
+	global idColumn
+	selection = idColumn.curselection()
+	if selection:
+		updateDialog = tk.Tk()
+		tk.Label(updateDialog, text="Change the attributes to how you want them, then press OK, or cancel to cancel.").pack()
+		descriptionFrame = tk.Frame(updateDialog)
+		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
+		descriptionEntry = tk.Entry(descriptionFrame)
+		descriptionEntry.insert(0, shirts[selection[0]].description)
+		descriptionEntry.pack(side='left')
+		
 onOpen()
 pickButton.config(command=pickAShirt)
 pickButton.pack(side='left')
