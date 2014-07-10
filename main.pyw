@@ -79,7 +79,7 @@ class Shirt:
 	def update(self, description, lastTime):
 		self.description = description
 		self.lastTime = lastTime
-		c.execute('update shirts set description=? and lasttime=? where id=?', (self.description, self.lastTime, self.id))
+		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
 		db.commit()
 		populate()
 def populate():
