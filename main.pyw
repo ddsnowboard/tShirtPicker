@@ -84,8 +84,8 @@ class Shirt:
 		populate()
 def populate():
 	idColumn.delete(0, 'end')
-	dateColumn.delete(0, dateColumn.size()-1)
-	descriptionColumn.delete(0,descriptionColumn.size()-1)
+	dateColumn.delete(0, 'end')
+	descriptionColumn.delete(0,'end')
 	for i in shirts:
 		i.addToList()
 def onOpen():
@@ -109,6 +109,13 @@ def clickColumn(event):
 		if event.widget is not idColumn:
 			idColumn.selection_clear(0, idColumn.size()-1)
 			idColumn.selection_set(selection[0])
+def finishShirt(event):
+	description = enterDescription.get()
+	date = enterDate.get()
+	if description is not '' and (re.match("\d\d\d\d-\d\d-\d\d",date) or date == ''):
+		shirts.append(Shirt(0, description, date))
+		shirts[-1].addToList()
+		dialog.destroy()
 def addShirt():
 	global dialog, enterDescription, enterDate
 	dialog = tk.Tk()
@@ -126,18 +133,11 @@ def addShirt():
 	okButton = tk.Button(dialog, text="OK")
 	okButton.pack(pady=5)
 	okButton.bind("<Button-1>", finishShirt)
-def finishShirt(event):
-	description = enterDescription.get()
-	date = enterDate.get()
-	if description is not '' and (re.match("\d\d\d\d-\d\d-\d\d",date) or date == ''):
-		shirts.append(Shirt(0, description, date))
-		shirts[-1].addToList()
-		dialog.destroy()
 def deleteShirt():
 	global idColumn, descriptionColumn, dateColumn
 	selection = idColumn.curselection()
 	if selection:
-		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+shirts[selection[0]].description+"\"?"):
+		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+str(shirts[selection[0]].description)+"\"?"):
 			delete(shirts.pop(selection[0]).id)
 			idColumn.delete(selection[0])
 			descriptionColumn.delete(selection[0])
@@ -160,7 +160,7 @@ def updateShirt():
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		tk.Label(updateDialog, text="Change the attributes of "+ shirts[updateSelection[0]].description + " to how \nyou want them, then press OK, or cancel to cancel.").pack()
+		tk.Label(updateDialog, text="Change the attributes of "+ str(shirts[updateSelection[0]].description) + " to how \nyou want them, then press OK, or cancel to cancel.").pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
