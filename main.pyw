@@ -76,6 +76,12 @@ class Shirt:
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
+	def update(self, description, lastTime):
+		self.description = description
+		self.lastTime = lastTime
+		c.execute('update shirts set description=? and lasttime=? where id=?', (self.description, self.lastTime, self.id))
+		db.commit()
+		populate()
 def populate():
 	idColumn.delete(0, 'end')
 	dateColumn.delete(0, dateColumn.size()-1)
@@ -103,7 +109,7 @@ def clickColumn(event):
 		if event.widget is not idColumn:
 			idColumn.selection_clear(0, idColumn.size()-1)
 			idColumn.selection_set(selection[0])
-def addShirt(event):
+def addShirt():
 	global dialog, enterDescription, enterDate
 	dialog = tk.Tk()
 	tk.Label(dialog, text='Give a short description of the shirt').pack()
@@ -146,18 +152,31 @@ def pickAShirt():
 		tk.messagebox.showinfo("Yes", "Ok. You're wearing "+one.description+" today.")
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
+def finishUpdate():
+	shirts[updateSelection[0]].update(descriptionEntry.get(), dateEntry.get())
+	updateDialog.destroy()
 def updateShirt():
-	global idColumn
-	selection = idColumn.curselection()
-	if selection:
+	global idColumn, updateSelection, descriptionEntry, dateEntry, updateDialog
+	updateSelection = idColumn.curselection()
+	if updateSelection:
 		updateDialog = tk.Tk()
-		tk.Label(updateDialog, text="Change the attributes to how you want them, then press OK, or cancel to cancel.").pack()
+		tk.Label(updateDialog, text="Change the attributes of "+ shirts[updateSelection[0]].description + " to how \nyou want them, then press OK, or cancel to cancel.").pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
-		descriptionEntry.insert(0, shirts[selection[0]].description)
+		descriptionEntry.insert(0, shirts[updateSelection[0]].description)
 		descriptionEntry.pack(side='left')
-		
+		descriptionFrame.pack()
+		dateFrame = tk.Frame(updateDialog)
+		tk.Label(dateFrame, text="Last worn (YYYY-MM-DD): ").pack(side='left')
+		dateEntry = tk.Entry(dateFrame)
+		dateEntry.insert(0, shirts[updateSelection[0]].lastTime)
+		dateEntry.pack(side='left')
+		dateFrame.pack()
+		buttonFrame = tk.Frame(updateDialog)
+		tk.Button(buttonFrame, text="OK", command=finishUpdate).pack(side='left')
+		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
+		buttonFrame.pack()		
 onOpen()
 pickButton.config(command=pickAShirt)
 pickButton.pack(side='left')
@@ -165,6 +184,7 @@ addButton.config(command=addShirt)
 addButton.pack(side='left')
 deleteButton.config(command=deleteShirt)
 deleteButton.pack(side='left')
+updateButton.config(command=updateShirt)
 updateButton.pack(side='left')
 buttons.pack(expand=1, pady=4)
 idLabel.pack()
