@@ -146,10 +146,10 @@ def insertTodaysDate(event):
 	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
 def pickAShirt():
 	one = pick()
-	if tk.messagebox.askyesno("Pick", "Do you want to wear "+one.description+" ?"):
+	if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
 		one.wearToday()
 		populate()
-		tk.messagebox.showinfo("Yes", "Ok. You're wearing "+one.description+" today.")
+		tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 def finishUpdate():
@@ -160,7 +160,7 @@ def updateShirt():
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		tk.Label(updateDialog, text="Change the attributes of "+ str(shirts[updateSelection[0]].description) + " to how \nyou want them, then press OK, or cancel to cancel.").pack()
+		tk.Label(updateDialog, text="Change the attributes of \""+ str(shirts[updateSelection[0]].description) + "\" to how \nyou want them, then press OK, or cancel to cancel.").pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
