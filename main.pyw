@@ -6,6 +6,7 @@ from tkinter import messagebox
 import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
+root.resizable(0,0)
 c = db.cursor()
 all = '*'
 date_format = "%Y-%m-%d"
