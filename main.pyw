@@ -6,6 +6,7 @@ from tkinter import messagebox
 import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
+root.resizable(0,0)
 c = db.cursor()
 all = '*'
 date_format = "%Y-%m-%d"
@@ -14,7 +15,7 @@ root.title("T-Shirt Picker")
 buttons = tk.Frame(root, height=15)
 pickButton = tk.Button(buttons, text="Pick today's shirt")
 addButton = tk.Button(buttons, text="Add a shirt")
-updateButton = tk.Button(buttons, text="Update a shirt")
+updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
 deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
 idFrame = tk.Frame(root, width=10, height=30)
 idLabel = tk.Label(idFrame, text="ID")
@@ -26,22 +27,25 @@ dateFrame = tk.Frame(root, height=30, width=15)
 dateLabel = tk.Label(dateFrame, text="Last Worn")
 dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0)
 def insert(id, description, lasttime):
-	c.execute("insert into shirts (id, description, lasttime) VALUES (" + str(id) + ", '" + description + "', '" + lasttime + "');")
+	c.execute("insert into shirts (id, description, lasttime) VALUES (?, ?, ?);", (id, description, lasttime))
 	db.commit()
 def select(rows, params = ''):
 	end = []
-	if params == '': 
-		for i in c.execute("select " + rows + " from shirts ORDER BY id;"):
+	if rows == all:
+		for i in c.execute("select * from shirts ORDER BY id;"):
+			end.append(i)
+	elif params == '': 
+		for i in c.execute("select ? from shirts ORDER BY id;", (rows,)):
 			end.append(i)
 	else:
-		for i in c.execute("select " + rows + " from shirts WHERE " + params+' ORDER BY id;'):
+		for i in c.execute("select ? from shirts WHERE ? ORDER BY id;", (rows, params)):
 			end.append(i)
 	return end
 def update(id, lasttime):
-	c.execute("update shirts SET lasttime = '" + lasttime + "' WHERE id = "+ str(id) +";")
+	c.execute("update shirts SET lasttime = ? WHERE id = ?;", (lasttime, id))
 	db.commit()
 def delete(id):
-	c.execute("delete from shirts WHERE id="+str(id)+';')
+	c.execute("delete from shirts WHERE id=?;", (id,))
 	db.commit()
 def pick():
 	weighted = []
@@ -100,6 +104,7 @@ def clickColumn(event):
 	selection = event.widget.curselection()
 	if selection:
 		deleteButton.config(state='normal')
+		updateButton.config(state='normal')
 		if event.widget is not descriptionColumn:
 			descriptionColumn.selection_clear(0, descriptionColumn.size()-1)
 			descriptionColumn.selection_set(selection[0])
@@ -146,10 +151,10 @@ def insertTodaysDate(event):
 	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
 def pickAShirt():
 	one = pick()
-	if tk.messagebox.askyesno("Pick", "Do you want to wear "+one.description+" ?"):
+	if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
 		one.wearToday()
 		populate()
-		tk.messagebox.showinfo("Yes", "Ok. You're wearing "+one.description+" today.")
+		tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 def finishUpdate():
@@ -160,7 +165,7 @@ def updateShirt():
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		tk.Label(updateDialog, text="Change the attributes of "+ str(shirts[updateSelection[0]].description) + " to how \nyou want them, then press OK, or cancel to cancel.").pack()
+		tk.Label(updateDialog, text="Change the attributes of \""+ str(shirts[updateSelection[0]].description) + "\" to how \nyou want them, then press OK, or cancel to cancel.").pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
