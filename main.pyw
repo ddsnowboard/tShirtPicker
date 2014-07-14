@@ -30,18 +30,21 @@ def insert(id, description, lasttime):
 	db.commit()
 def select(rows, params = ''):
 	end = []
-	if params == '': 
-		for i in c.execute("select ? from shirts ORDER BY id;", rows):
+	if rows == all:
+		for i in c.execute("select * from shirts ORDER BY id;"):
+			end.append(i)
+	elif params == '': 
+		for i in c.execute("select ? from shirts ORDER BY id;", (rows,)):
 			end.append(i)
 	else:
 		for i in c.execute("select ? from shirts WHERE ? ORDER BY id;", (rows, params)):
 			end.append(i)
 	return end
 def update(id, lasttime):
-	c.execute("update shirts SET lasttime = '?' WHERE id = ?;", (lasttime, str(id))
+	c.execute("update shirts SET lasttime = ? WHERE id = ?;", (lasttime, id))
 	db.commit()
 def delete(id):
-	c.execute("delete from shirts WHERE id=?;", id)
+	c.execute("delete from shirts WHERE id=?;", (id,))
 	db.commit()
 def pick():
 	weighted = []
