@@ -149,8 +149,8 @@ def deleteShirt():
 	global idColumn, descriptionColumn, dateColumn
 	selection = idColumn.curselection()
 	if selection:
-		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+str(shirts[selection[0]].description)+"\"?"):
-			delete(shirts.pop(selection[0]).id)
+		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+str(shirts[int(selection[0])].description)+"\"?"):
+			delete(shirts.pop(int(selection[0])).id)
 			idColumn.delete(selection[0])
 			descriptionColumn.delete(selection[0])
 			dateColumn.delete(selection[0])
@@ -165,26 +165,24 @@ def pickAShirt():
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 def finishUpdate():
-	shirts[updateSelection[0]].update(descriptionEntry.get(), dateEntry.get())
+	shirts[int(updateSelection[0])].update(descriptionEntry.get(), dateEntry.get())
 	updateDialog.destroy()
 def updateShirt():
 	global idColumn, updateSelection, descriptionEntry, dateEntry, updateDialog
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		print(shirts
-		tk.Label(updateDialog, text="""Change the attributes of \" {0} \" to how \nyou want them, then
-									 press OK, or cancel to cancel.""".format(str(shirts[updateSelection[0]].description))).pack()
+		tk.Label(updateDialog, text="Change the attributes of \"%s\" to how \nyou want them, then press OK, or cancel to cancel." % (str(shirts[int(updateSelection[0])].description))).pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
-		descriptionEntry.insert(0, shirts[updateSelection[0]].description)
+		descriptionEntry.insert(0, shirts[int(updateSelection[0])].description)
 		descriptionEntry.pack(side='left')
 		descriptionFrame.pack()
 		dateFrame = tk.Frame(updateDialog)
 		tk.Label(dateFrame, text="Last worn (YYYY-MM-DD): ").pack(side='left')
 		dateEntry = tk.Entry(dateFrame)
-		dateEntry.insert(0, shirts[updateSelection[0]].lastTime)
+		dateEntry.insert(0, shirts[int(updateSelection[0])].lastTime)
 		dateEntry.pack(side='left')
 		dateFrame.pack()
 		buttonFrame = tk.Frame(updateDialog)
