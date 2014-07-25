@@ -1,8 +1,15 @@
 import sqlite3
 import datetime
 import random
-import tkinter as tk
-from tkinter import messagebox
+import sys
+try:
+	import tkinter as tk
+	from tkinter import messagebox
+except ImportError:
+	import Tkinter as tk
+	import tkMessageBox
+	tk.messagebox = tkMessageBox
+
 import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
@@ -165,7 +172,9 @@ def updateShirt():
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		tk.Label(updateDialog, text="Change the attributes of \""+ str(shirts[updateSelection[0]].description) + "\" to how \nyou want them, then press OK, or cancel to cancel.").pack()
+		print(shirts
+		tk.Label(updateDialog, text="""Change the attributes of \" {0} \" to how \nyou want them, then
+									 press OK, or cancel to cancel.""".format(str(shirts[updateSelection[0]].description))).pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
