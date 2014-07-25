@@ -1,7 +1,6 @@
 import sqlite3
 import datetime
 import random
-import sys
 try:
 	import tkinter as tk
 	from tkinter import messagebox
