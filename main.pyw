@@ -26,7 +26,7 @@ deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
 scrollbar = tk.Scrollbar(root, orient='vertical')
 idFrame = tk.Frame(root, width=10, height=30)
 idLabel = tk.Label(idFrame, text="ID")
-idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
 descriptionFrame = tk.Frame(root, width=40, height=30)
 descriptionLabel = tk.Label(descriptionFrame, text="Description")
 descriptionColumn = tk.Listbox(descriptionFrame, bg="#ffffff", bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
@@ -189,10 +189,26 @@ def updateShirt():
 		tk.Button(buttonFrame, text="OK", command=finishUpdate).pack(side='left')
 		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
 		buttonFrame.pack()		
-def scroll(*args):
+def scrollBar(*args):
 	for i in [idColumn, descriptionColumn, dateColumn]:
 		i.yview(*args)
+def descriptionScroll(*args):
+	global scrollbar
+	for i in [dateColumn, idColumn]:
+		i.yview_moveto(args[0])
+	scrollbar.set(*args)
+def dateScroll(*args):
+	for i in [idColumn, descriptionColumn]:
+		i.yview_moveto(args[0])
+	scrollbar.set(*args)
+def idScroll(*args):
+	for i in [dateColumn, descriptionColumn]:
+			i.yview_moveto(args[0])
+	scrollbar.set(*args)
 onOpen()
+idColumn.config(yscrollcommand = idScroll)
+descriptionColumn.config(yscrollcommand = descriptionScroll)
+dateColumn.config(yscrollcommand = dateScroll)
 pickButton.config(command=pickAShirt)
 pickButton.pack(side='left')
 addButton.config(command=addShirt)
@@ -214,7 +230,7 @@ dateLabel.pack()
 dateColumn.bind('<ButtonRelease-1>', clickColumn)
 dateColumn.pack()
 dateFrame.pack(side='left')
-scrollbar.config(command=scroll)
+scrollbar.config(command=scrollBar)
 scrollbar.pack(side='left', fill='y')
 root.mainloop()
 
