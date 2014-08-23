@@ -124,13 +124,17 @@ def clickColumn(event):
 def finishShirt(event):
 	description = enterDescription.get()
 	date = enterDate.get()
-	if description is not '' and (re.match("\d\d\d\d-\d\d-\d\d",date) or date == ''):
-		shirts.append(Shirt(0, description, date))
-		shirts[-1].addToList()
-		dialog.destroy()
+	if not datetime.datetime.today() < datetime.datetime.strptime(date, date_format):
+		if description is not '' and (re.match("\d\d\d\d-\d\d-\d\d",date) or date == ''):
+			shirts.append(Shirt(0, description, date))
+			shirts[-1].addToList()
+			dialog.destroy()
+	else:
+		complaint.set("You need to give a past date, you fool!")
 def addShirt():
-	global dialog, enterDescription, enterDate
+	global dialog, enterDescription, enterDate, complaint
 	dialog = tk.Tk()
+	complaint = tk.StringVar(dialog)
 	tk.Label(dialog, text='Give a short description of the shirt').pack()
 	enterDescription = tk.Entry(dialog)
 	enterDescription.pack(pady=5)
@@ -142,6 +146,7 @@ def addShirt():
 	today.bind("<Button-1>", insertTodaysDate)
 	today.pack(side='left')
 	dateDialogFrame.pack()
+	tk.Label(dialog, textvariable = complaint, fg='red').pack()
 	okButton = tk.Button(dialog, text="OK")
 	okButton.pack(pady=5)
 	okButton.bind("<Button-1>", finishShirt)
@@ -165,13 +170,17 @@ def pickAShirt():
 	else:
 		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 def finishUpdate():
-	shirts[int(updateSelection[0])].update(descriptionEntry.get(), dateEntry.get())
-	updateDialog.destroy()
+	if not datetime.datetime.today() < datetime.datetime.strptime(dateEntry.get(), date_format):
+		shirts[int(updateSelection[0])].update(descriptionEntry.get(), dateEntry.get())
+		updateDialog.destroy()
+	else:
+		complaint.set("You have to put in a past date, you fool!")
 def updateShirt():
-	global idColumn, updateSelection, descriptionEntry, dateEntry, updateDialog
+	global idColumn, updateSelection, descriptionEntry, dateEntry, updateDialog, complaint
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
+		complaint = tk.StringVar(updateDialog)
 		tk.Label(updateDialog, text="Change the attributes of \"%s\" to how \nyou want them, then press OK, or cancel to cancel." % (str(shirts[int(updateSelection[0])].description))).pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
@@ -185,6 +194,7 @@ def updateShirt():
 		dateEntry.insert(0, shirts[int(updateSelection[0])].lastTime)
 		dateEntry.pack(side='left')
 		dateFrame.pack()
+		tk.Label(updateDialog, textvariable = complaint, fg='red').pack()
 		buttonFrame = tk.Frame(updateDialog)
 		tk.Button(buttonFrame, text="OK", command=finishUpdate).pack(side='left')
 		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
