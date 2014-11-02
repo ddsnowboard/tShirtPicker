@@ -12,27 +12,33 @@ except ImportError:
 import re
 db = sqlite3.connect("shirts.db")
 root = tk.Tk()
+# Makes the window unable to be resized because that breaks everything. 
 root.resizable(0,0)
 c = db.cursor()
+# These are constants, pretty much, but I don't want to use a magic number.
 all = '*'
 date_format = "%Y-%m-%d"
+
 shirts = []
 root.title("T-Shirt Picker")
 buttons = tk.Frame(root, height=15)
 pickButton = tk.Button(buttons, text="Pick today's shirt")
 addButton = tk.Button(buttons, text="Add a shirt")
+# These are disabled until you select something. 
 updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
 deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
+
 scrollbar = tk.Scrollbar(root, orient='vertical')
 idFrame = tk.Frame(root, width=10, height=30)
 idLabel = tk.Label(idFrame, text="ID")
 idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
 descriptionFrame = tk.Frame(root, width=40, height=30)
 descriptionLabel = tk.Label(descriptionFrame, text="Description")
-descriptionColumn = tk.Listbox(descriptionFrame, bg="#ffffff", bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+descriptionColumn = tk.Listbox(descriptionFrame, bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
 dateFrame = tk.Frame(root, height=30, width=15)
 dateLabel = tk.Label(dateFrame, text="Last Worn")
 dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+# insert(), select(), update(), and delete() are functions that abstract the actual sql from me. 
 def insert(id, description, lasttime):
 	c.execute("insert into shirts (id, description, lasttime) VALUES (?, ?, ?);", (id, description, lasttime))
 	db.commit()
@@ -54,34 +60,38 @@ def update(id, lasttime):
 def delete(id):
 	c.execute("delete from shirts WHERE id=?;", (id,))
 	db.commit()
+# This picks a shirt with a weighting algorithm. For every day ago you've worn it, it gets three picks, plus one automatically. 
 def pick():
 	weighted = []
 	for i in shirts:
 		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3+1):
 			weighted.append(i)
 	return random.choice(weighted)
+# This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
 		global db
 		self.description = description
+		# If you don't know when you wore it, say you wore it a week ago. 
 		if lastTime == '':
 			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime(date_format)
 		else: 
 			self.lastTime = lastTime
+		# If the id is zero (it doesn't have one), tack it on to the end of the list. 
 		if id == 0:
+			# If the list is empty, it's number 1. 
 			if len(select(all)) == 0:
 				self.id = 1
 			else:
 				self.id = select(all)[-1][0]+1
 			insert(self.id, self.description, self.lastTime)
-			db.commit()
 		else: 
 			self.id = id
-			
+	# This updates both the database and the python list.
 	def wearToday(self):
 		update(self.id, datetime.date.today().strftime(date_format))
 		self.lastTime = datetime.date.today().strftime(date_format)
-		db.commit()
+	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
 	def addToList(self):
 		global idColumn, descriptionColumn, dateColumn
 		idColumn.insert('end', self.id)
@@ -91,14 +101,15 @@ class Shirt:
 		self.description = description
 		self.lastTime = lastTime
 		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
-		db.commit()
 		populate()
+# This empties all the lists in the GUI and re-populates them with shirts. 
 def populate():
 	idColumn.delete(0, 'end')
 	dateColumn.delete(0, 'end')
 	descriptionColumn.delete(0,'end')
 	for i in shirts:
 		i.addToList()
+# When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
 def onOpen():
 	try:
 		for i in select(all):
@@ -107,6 +118,7 @@ def onOpen():
 	except:
 		c.execute("create table shirts (id, description, lasttime);")
 		onOpen()
+# This covers the selecting of the other columns when you click on the one. 
 def clickColumn(event):
 	selection = event.widget.curselection()
 	if selection:
@@ -121,6 +133,7 @@ def clickColumn(event):
 		if event.widget is not idColumn:
 			idColumn.selection_clear(0, idColumn.size()-1)
 			idColumn.selection_set(selection[0])
+# This finishes adding a shirt. It makes the object and puts it on the shirt list, which takes care of everything else. 
 def finishShirt(event):
 	description = enterDescription.get()
 	date = enterDate.get()
@@ -131,19 +144,20 @@ def finishShirt(event):
 			dialog.destroy()
 	else:
 		complaint.set("You need to give a past date, you fool!")
+# This begins adding a shirt, ending with finishShirt().
 def addShirt():
 	global dialog, enterDescription, enterDate, complaint
 	dialog = tk.Tk()
-	dialog.bind("Escape", dialog.destroy())
+	dialog.bind("<Escape>", lambda n: dialog.destroy())
 	complaint = tk.StringVar(dialog)
 	tk.Label(dialog, text='Give a short description of the shirt').pack()
 	enterDescription = tk.Entry(dialog)
-	enterDate.bind("Return", finishShirt)
+	enterDescription.bind("<Return>", finishShirt)
 	enterDescription.pack(pady=5)
 	tk.Label(dialog, text='When was the last day you wore the shirt, \napproxamately, in YYYY-MM-DD format? \nOr leave it blank if you don\'t know.').pack()
 	dateDialogFrame = tk.Frame(dialog)
 	enterDate = tk.Entry(dateDialogFrame)
-	enterDate.bind("Return", finishShirt)
+	enterDate.bind("<Return>", finishShirt)
 	enterDate.pack(pady=5, side='left')
 	today = tk.Button(dateDialogFrame, text="Today")
 	today.bind("<Button-1>", insertTodaysDate)
@@ -162,8 +176,11 @@ def deleteShirt():
 			idColumn.delete(selection[0])
 			descriptionColumn.delete(selection[0])
 			dateColumn.delete(selection[0])
+# This puts today's date into a specific box. 
 def insertTodaysDate(event):
 	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
+
+# This picks the shirt.
 def pickAShirt():
 	one = pick()
 	if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
@@ -183,13 +200,13 @@ def updateShirt():
 	updateSelection = idColumn.curselection()
 	if updateSelection:
 		updateDialog = tk.Tk()
-		updateDialog.bind("Escape", updateDialog.destroy())
+		updateDialog.bind("<Escape>", lambda n: updateDialog.destroy())
 		complaint = tk.StringVar(updateDialog)
 		tk.Label(updateDialog, text="Change the attributes of \"%s\" to how \nyou want them, then press OK, or cancel to cancel." % (str(shirts[int(updateSelection[0])].description))).pack()
 		descriptionFrame = tk.Frame(updateDialog)
 		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
 		descriptionEntry = tk.Entry(descriptionFrame)
-		descriptionEntry.bind("Return", finishUpdate)
+		descriptionEntry.bind("<Return>", lambda n: finishUpdate())
 		descriptionEntry.insert(0, shirts[int(updateSelection[0])].description)
 		descriptionEntry.pack(side='left')
 		descriptionFrame.pack()
@@ -198,13 +215,14 @@ def updateShirt():
 		dateEntry = tk.Entry(dateFrame)
 		dateEntry.insert(0, shirts[int(updateSelection[0])].lastTime)
 		dateEntry.pack(side='left')
-		dateEntry.bind("Return", finishUpdate)
+		dateEntry.bind("<Return>", finishUpdate)
 		dateFrame.pack()
 		tk.Label(updateDialog, textvariable = complaint, fg='red').pack()
 		buttonFrame = tk.Frame(updateDialog)
 		tk.Button(buttonFrame, text="OK", command=finishUpdate).pack(side='left')
 		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
 		buttonFrame.pack()
+# These functions cover the scrolling functionality. I don't really understand them, to be honest. 
 def scrollBar(*args):
 	for i in [idColumn, descriptionColumn, dateColumn]:
 		i.yview(*args)
@@ -221,6 +239,8 @@ def idScroll(*args):
 	for i in [dateColumn, descriptionColumn]:
 			i.yview_moveto(args[0])
 	scrollbar.set(*args)
+	
+# This is the actual logic that happens when you run the program. 
 onOpen()
 idColumn.config(yscrollcommand = idScroll)
 descriptionColumn.config(yscrollcommand = descriptionScroll)
