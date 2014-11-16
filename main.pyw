@@ -1,6 +1,7 @@
 import sqlite3
 import datetime
 import random
+import sys
 try:
 	import tkinter as tk
 	from tkinter import messagebox
@@ -8,36 +9,13 @@ except ImportError:
 	import Tkinter as tk
 	import tkMessageBox
 	tk.messagebox = tkMessageBox
-
+	input = raw_input
 import re
+shirts = []
 db = sqlite3.connect("shirts.db")
-root = tk.Tk()
-# Makes the window unable to be resized because that breaks everything. 
-root.resizable(0,0)
 c = db.cursor()
-# These are constants, pretty much, but I don't want to use a magic number.
 all = '*'
 date_format = "%Y-%m-%d"
-
-shirts = []
-root.title("T-Shirt Picker")
-buttons = tk.Frame(root, height=15)
-pickButton = tk.Button(buttons, text="Pick today's shirt")
-addButton = tk.Button(buttons, text="Add a shirt")
-# These are disabled until you select something. 
-updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
-deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
-
-scrollbar = tk.Scrollbar(root, orient='vertical')
-idFrame = tk.Frame(root, width=10, height=30)
-idLabel = tk.Label(idFrame, text="ID")
-idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
-descriptionFrame = tk.Frame(root, width=40, height=30)
-descriptionLabel = tk.Label(descriptionFrame, text="Description")
-descriptionColumn = tk.Listbox(descriptionFrame, bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
-dateFrame = tk.Frame(root, height=30, width=15)
-dateLabel = tk.Label(dateFrame, text="Last Worn")
-dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
 # insert(), select(), update(), and delete() are functions that abstract the actual sql from me. 
 def insert(id, description, lasttime):
 	c.execute("insert into shirts (id, description, lasttime) VALUES (?, ?, ?);", (id, description, lasttime))
@@ -97,11 +75,12 @@ class Shirt:
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
-	def update(self, description, lastTime):
+	def update(self, description, lastTime, gui = True):
 		self.description = description
 		self.lastTime = lastTime
 		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
-		populate()
+		if gui:
+			populate()
 # This empties all the lists in the GUI and re-populates them with shirts. 
 def populate():
 	idColumn.delete(0, 'end')
@@ -110,12 +89,13 @@ def populate():
 	for i in shirts:
 		i.addToList()
 # When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
-def onOpen():
+def onOpen(gui = True):
 	try:
 		for i in select(all):
 			shirts.append(Shirt(i[0], i[1], i[2]))
-		populate()
-	except:
+		if gui: 
+			populate()
+	except sqlite3.Error:
 		c.execute("create table shirts (id, description, lasttime);")
 		onOpen()
 # This covers the selecting of the other columns when you click on the one. 
@@ -239,92 +219,113 @@ def idScroll(*args):
 	for i in [dateColumn, descriptionColumn]:
 			i.yview_moveto(args[0])
 	scrollbar.set(*args)
+if len(sys.argv) < 2:
+	# This is the actual logic that happens when you run the program. 
+	onOpen()
+	root = tk.Tk()
+	# Makes the window unable to be resized because that breaks everything. 
+	root.resizable(0,0)
 	
-# This is the actual logic that happens when you run the program. 
-onOpen()
-idColumn.config(yscrollcommand = idScroll)
-descriptionColumn.config(yscrollcommand = descriptionScroll)
-dateColumn.config(yscrollcommand = dateScroll)
-pickButton.config(command=pickAShirt)
-pickButton.pack(side='left')
-addButton.config(command=addShirt)
-addButton.pack(side='left')
-deleteButton.config(command=deleteShirt)
-deleteButton.pack(side='left')
-updateButton.config(command=updateShirt)
-updateButton.pack(side='left')
-buttons.pack(expand=1, pady=4)
-idLabel.pack()
-idColumn.bind('<ButtonRelease-1>', clickColumn)
-idColumn.pack()
-idFrame.pack(side='left')
-descriptionLabel.pack()
-descriptionColumn.bind('<ButtonRelease-1>', clickColumn)
-descriptionColumn.pack()
-descriptionFrame.pack(side='left')
-dateLabel.pack()
-dateColumn.bind('<ButtonRelease-1>', clickColumn)
-dateColumn.pack()
-dateFrame.pack(side='left')
-scrollbar.config(command=scrollBar)
-scrollbar.pack(side='left', fill='y')
-root.mainloop()
+	# These are constants, pretty much, but I don't want to use a magic number.
+	all = '*'
+	date_format = "%Y-%m-%d"
 
-
-
-
-
-
-
-
+	root.title("T-Shirt Picker")
+	buttons = tk.Frame(root, height=15)
+	pickButton = tk.Button(buttons, text="Pick today's shirt")
+	addButton = tk.Button(buttons, text="Add a shirt")
+	# These are disabled until you select something. 
+	updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
+	deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
+	scrollbar = tk.Scrollbar(root, orient='vertical')
+	idFrame = tk.Frame(root, width=10, height=30)
+	idLabel = tk.Label(idFrame, text="ID")
+	idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
+	descriptionFrame = tk.Frame(root, width=40, height=30)
+	descriptionLabel = tk.Label(descriptionFrame, text="Description")
+	descriptionColumn = tk.Listbox(descriptionFrame, bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+	dateFrame = tk.Frame(root, height=30, width=15)
+	dateLabel = tk.Label(dateFrame, text="Last Worn")
+	dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+	idColumn.config(yscrollcommand = idScroll)
+	descriptionColumn.config(yscrollcommand = descriptionScroll)
+	dateColumn.config(yscrollcommand = dateScroll)
+	pickButton.config(command=pickAShirt)
+	pickButton.pack(side='left')
+	addButton.config(command=addShirt)
+	addButton.pack(side='left')
+	deleteButton.config(command=deleteShirt)
+	deleteButton.pack(side='left')
+	updateButton.config(command=updateShirt)
+	updateButton.pack(side='left')
+	buttons.pack(expand=1, pady=4)
+	idLabel.pack()
+	idColumn.bind('<ButtonRelease-1>', clickColumn)
+	idColumn.pack()
+	idFrame.pack(side='left')
+	descriptionLabel.pack()
+	descriptionColumn.bind('<ButtonRelease-1>', clickColumn)
+	descriptionColumn.pack()
+	descriptionFrame.pack(side='left')
+	dateLabel.pack()
+	dateColumn.bind('<ButtonRelease-1>', clickColumn)
+	dateColumn.pack()
+	dateFrame.pack(side='left')
+	scrollbar.config(command=scrollBar)
+	scrollbar.pack(side='left', fill='y')
+	root.mainloop()
+else:
+	onOpen(False)
 # These are all for the text-based implementation, but I'm working on a GUI.
-# def list():
-	# print("Here are your shirts \nID   Description   Last worn")
-	# for i in shirts: 
-		# print(', '.join([str(i.id), i.description, i.lastTime]))
-# while True:
-	# i = input("Type PICK to pick a new shirt for today, NEW to add a shirt, UPDATE to update a shirt, LIST to list all shirts, DELETE to delete a shirt, or EXIT to exit. \n")
-	# if i.lower() == "new":
-		# descrip = input("Give a short description of the shirt \n")
-		# last = input("When was the last time you wore the shirt, in YYYY-MM-DD format? Or leave it blank if it was never worn \n")
-		# if last == '':
-			# last = (datetime.datetime.today()-datetime.timedelta(days=14)).strftime(date_format)
-		# shirts.append(Shirt(0, descrip, last))
-	# elif i.lower() == "pick":
-		# done = False
-		# while not done:
-			# choice = pick()
-			# print("Today's shirt is " + choice.description +". Do you want to wear it? y/n")
-			# n = input()
-			# if n.lower() == 'y':
-				# print("Ok!")
-				# choice.wearToday()
-				# done = True
-			# elif n.lower() == 'n':
-				# print("Ok then.")
-	# elif i.lower() == 'update':
-		# list()
-		# choice = input("Type the ID of the shirt you want to change\n")
-		# inp = input("Do you want to change the last worn DATE or the DESCRIPTION?\n")
-		# if inp.lower()== 'description':
-			# newDescrip = input("Type the new description you want\n")
-			# c.execute("update shirts SET description='"+newDescrip+"' WHERE id = "+str(choice)+";")
-			# db.commit()
-		# elif inp.lower() == 'date':
-			# newDate = input("Type the new date you want to set in YYYY-MM-DD format\n")
-			# update(choice, newDate)
-	# elif i.lower() == 'list':
-		# list()
-	# elif i.lower() == 'delete':
-		# list()
-		# delId = input("What is the ID of the shirt you want to delete?\n")
-		# yn = input("Do you really want to delete? YES or NO\n")
-		# if yn.lower() == 'yes':
-			# c.execute("delete from shirts where id = "+str(delId) +";")
-			# print("Successfully deleted")
-	# elif i.lower() == 'exit':
-		# break
-	# else: 
-		# print("That's not an available command. Sorry!")
-		
-	# print("\n\n")
+	def list():
+		print("Here are your shirts \nID   Description   Last worn")
+		for i in shirts: 
+			print(', '.join([str(i.id), i.description, i.lastTime]))
+	while True:
+		command = input("Type PICK to pick a new shirt for today, NEW to add a shirt, UPDATE to update a shirt, LIST to list all shirts, DELETE to delete a shirt, or EXIT to exit. \n")
+		if command.lower() == "new":
+			descrip = input("Give a short description of the shirt \n")
+			last = input("When was the last time you wore the shirt, in YYYY-MM-DD format? Or leave it blank if it was never worn \n")
+			if last == '':
+				last = (datetime.datetime.today()-datetime.timedelta(days=14)).strftime(date_format)
+			shirts.append(Shirt(0, descrip, last))
+		elif command.lower() == "pick":
+			done = False
+			while not done:
+				choice = pick()
+				print("Today's shirt is " + choice.description +". Do you want to wear it? y/n")
+				n = input()
+				if n.lower() == 'y':
+					print("Ok!")
+					choice.wearToday()
+					done = True
+				elif n.lower() == 'n':
+					print("Ok then.")
+		elif command.lower() == 'update':
+			list()
+			choice = input("Type the ID of the shirt you want to change\n")
+			inp = input("Do you want to change the last worn DATE or the DESCRIPTION?\n")
+			# REFACTOR THIS TO USE THE T-SHIRT METHODS. 
+			if inp.lower()== 'description':
+				newDescrip = input("Type the new description you want\n")
+				c.execute("update shirts SET description='"+newDescrip+"' WHERE id = "+str(choice)+";")
+				db.commit()
+			elif inp.lower() == 'date':
+				newDate = input("Type the new date you want to set in YYYY-MM-DD format\n")
+				update(choice, newDate)
+		elif command.lower() == 'list':
+			list()
+		elif command.lower() == 'delete':
+			list()
+			delId = input("What is the ID of the shirt you want to delete?\n")
+			yn = input("Do you really want to delete? YES or NO\n")
+			if yn.lower() == 'yes':
+				print(delId)
+				delete(int(delId))
+				print("Successfully deleted")
+		elif command.lower() == 'exit':
+			break
+		else: 
+			print("That's not an available command. Sorry!")
+		print("\n\n")
+		shirts = [Shirt(i[0], i[1], i[2]) for i in select(all)]
