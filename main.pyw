@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import random
 import sys
+import WillsLib
 try:
 	import tkinter as tk
 	from tkinter import messagebox
@@ -221,7 +222,6 @@ def idScroll(*args):
 	scrollbar.set(*args)
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
-	onOpen()
 	root = tk.Tk()
 	# Makes the window unable to be resized because that breaks everything. 
 	root.resizable(0,0)
@@ -273,6 +273,7 @@ if len(sys.argv) < 2:
 	dateFrame.pack(side='left')
 	scrollbar.config(command=scrollBar)
 	scrollbar.pack(side='left', fill='y')
+	onOpen()
 	root.mainloop()
 else:
 	onOpen(False)
@@ -303,16 +304,14 @@ else:
 					print("Ok then.")
 		elif command.lower() == 'update':
 			list()
-			choice = input("Type the ID of the shirt you want to change\n")
+			choice = shirts[WillsLib.myIndex(shirts, int(input("Type the ID of the shirt you want to change\n")), lambda x: x.id)]
 			inp = input("Do you want to change the last worn DATE or the DESCRIPTION?\n")
-			# REFACTOR THIS TO USE THE T-SHIRT METHODS. 
 			if inp.lower()== 'description':
 				newDescrip = input("Type the new description you want\n")
-				c.execute("update shirts SET description='"+newDescrip+"' WHERE id = "+str(choice)+";")
-				db.commit()
+				choice.update(newDescrip, choice.lastTime, False)
 			elif inp.lower() == 'date':
 				newDate = input("Type the new date you want to set in YYYY-MM-DD format\n")
-				update(choice, newDate)
+				choice.update(choice.description, newDate, False)
 		elif command.lower() == 'list':
 			list()
 		elif command.lower() == 'delete':
@@ -320,7 +319,6 @@ else:
 			delId = input("What is the ID of the shirt you want to delete?\n")
 			yn = input("Do you really want to delete? YES or NO\n")
 			if yn.lower() == 'yes':
-				print(delId)
 				delete(int(delId))
 				print("Successfully deleted")
 		elif command.lower() == 'exit':
