@@ -94,14 +94,14 @@ def squares():
 		yield out
 		out+=odd
 		odd+=2
-# This generator should kick out primes forever, given enough memory and time. Also, it's broken.  
+# This generator will kick out primes forever, given enough memory and time.  
 def primes():
 	yield 2
 	prime = True
 	out = 3
 	while True:
 		prime = True
-		for i in range(2, int(out/2)+1):
+		for i in range(2, int(math.sqrt(out))+1):
 			if out%i==0:
 				prime = False
 		if prime:
@@ -152,6 +152,7 @@ class Equation:
 		elif self.degree<=1 and other.degree<=1:
 			return (right/left[1], self.evaluate(right/left[1]))
 		elif self.degree == 2 or other.degree == 2:
+			# Returns quadratic formula
 			return (((-1*left[1]+math.sqrt(left[1]**2-4*(left[2])*(-1*right)))/(2*left[2]), self.evaluate((-1*left[1]+math.sqrt(left[1]**2-4*(left[2])*(-1*right)))/(2*left[2]))), ((-1*left[1]-math.sqrt(left[1]**2-4*(left[2])*(-1*right)))/(2*left[2]), self.evaluate((-1*left[1]-math.sqrt(left[1]**2-4*(left[2])*(-1*right)))/(2*left[2]))))
 		else:
 			raise Error("I really can't get an accurate intersection with just this data.")
