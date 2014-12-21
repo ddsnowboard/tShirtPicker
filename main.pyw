@@ -114,6 +114,10 @@ def clickColumn(event):
 		if event.widget is not idColumn:
 			idColumn.selection_clear(0, idColumn.size()-1)
 			idColumn.selection_set(selection[0])
+class NewShirtWindow(tk.Toplevel)
+	def __init__(self):
+		tk.Toplevel.__init__(self)
+		
 # This finishes adding a shirt. It makes the object and puts it on the shirt list, which takes care of everything else. 
 def finishShirt(event):
 	description = enterDescription.get()
