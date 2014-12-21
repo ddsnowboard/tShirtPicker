@@ -115,8 +115,11 @@ def clickColumn(event):
 			idColumn.selection_clear(0, idColumn.size()-1)
 			idColumn.selection_set(selection[0])
 class NewShirtWindow(tk.Toplevel)
-	def __init__(self):
+	def __init__(self, master):
 		tk.Toplevel.__init__(self)
+		self.master = master
+		self.bind("<Escape>", lambda x: self.destroy())
+		# Can I set the title to something better?
 		
 # This finishes adding a shirt. It makes the object and puts it on the shirt list, which takes care of everything else. 
 def finishShirt(event):
