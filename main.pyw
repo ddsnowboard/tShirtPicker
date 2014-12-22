@@ -51,7 +51,14 @@ class TShirtPicker(tk.Tk):
 		tk.Tk.__init__(self)
 		self.title("T-Shirt Picker")
 		self.buttonFrame = tk.Frame(self, height=15)
-		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = 
+		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = pickAShirt)
+		self.pickButton.pack(side='left')
+		self.addButton = tk.Button(self.buttonFrame, command = lambda: NewShirtWindow())
+		self.addButton.pack(side='left')
+		self.updateButton = tk.Button(self.buttonFrame, command=updateShirt)
+		self.updateButton.pack(side='left')
+		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt)
+		self.deleteButton.pack(side='left')
 # This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
