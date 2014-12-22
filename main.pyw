@@ -46,6 +46,12 @@ def pick():
 		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3+1):
 			weighted.append(i)
 	return random.choice(weighted)
+class TShirtPicker(tk.Tk):
+	def __init__(self):
+		tk.Tk.__init__(self)
+		self.title("T-Shirt Picker")
+		self.buttonFrame = tk.Frame(self, height=15)
+		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = 
 # This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
@@ -241,7 +247,7 @@ def idScroll(*args):
 	scrollbar.set(*args)
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
-	root = tk.Tk()
+	root = TShirtPicker()
 	# Makes the window unable to be resized because that breaks everything. 
 	root.resizable(0,0)
 	
