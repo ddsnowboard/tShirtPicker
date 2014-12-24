@@ -46,10 +46,50 @@ def pick():
 		for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, date_format)).days*3+1):
 			weighted.append(i)
 	return random.choice(weighted)
+class Column(tk.Frame):
+	def __init__(self, master):
+		tk.Frame.__init__(self, master)
+		self.master = master
+		self.text = text
+		self.label = tk.Label(self)
+		self.column = tk.Listbox(self, bd=1, height=30, width=10, selectmode='single', exportselection=0, yscrollcommand=self.scroll)
+		self.curselection = self.column.curselection
+		self.config = self.column.config
+		self.label.pack()
+		self.column.pack()
+	def scroll(self, *args):
+		raise NotImplementedError("You need to implement this for each column individually")
+class IDColumn(Column):
+	def __init__(self, master):
+		Column.__init__(self, master)
+		self.label.config(text="id")
+	def scroll(self, *args):
+		for i in [self.master.dateColumn, self.master.descriptionColumn]:
+			i.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
+class DescriptionColumn(Column):
+	def __init__(self, master):
+		Column.__init__(self, master)
+		self.label.config(text="Description")
+	def scroll(self, *args):
+		for i in [self.master.dateColumn, self.master.idColumn]:
+			i.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
+class DateColumn(Column):
+	def __init__(self, master):
+		Column.__init__(self, master)
+		self.label.config(text="Last Worn")
+	def scroll(self, *args):
+		for i in [self.master.idColumn, self.master.descriptionColumn]"
+			i.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
 class TShirtPicker(tk.Tk):
 	def __init__(self):
+		self.all = '*'
+		self.date_format = "%Y-%m-%d"
 		tk.Tk.__init__(self)
 		self.title("T-Shirt Picker")
+		self.resizable(0, 0)
 		self.buttonFrame = tk.Frame(self, height=15)
 		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = pickAShirt)
 		self.pickButton.pack(side='left')
@@ -59,6 +99,13 @@ class TShirtPicker(tk.Tk):
 		self.updateButton.pack(side='left')
 		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt)
 		self.deleteButton.pack(side='left')
+		self.buttonFrame.pack(expand=1, pady=4)
+		self.scrollbar = tk.Scrollbar(self, orient='vertical')
+		self.idColumn = IDColumn(self)
+		self.dateColumn = DateColumn(self)
+		self.descriptionColumn = DescriptionColumn(self)
+		for i in [self.idColumn, self.descriptionColumn, self.dateColumn]:
+			i.pack()
 # This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
@@ -236,9 +283,9 @@ def updateShirt():
 		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
 		buttonFrame.pack()
 # These functions cover the scrolling functionality. I don't really understand them, to be honest. 
-def scrollBar(*args):
-	for i in [idColumn, descriptionColumn, dateColumn]:
-		i.yview(*args)
+# def scrollBar(*args):
+	# for i in [idColumn, descriptionColumn, dateColumn]:
+		# i.yview(*args)
 def descriptionScroll(*args):
 	global scrollbar
 	for i in [dateColumn, idColumn]:
