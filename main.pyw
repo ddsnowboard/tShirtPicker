@@ -51,6 +51,7 @@ class Column(tk.Frame):
 		self.selection_clear = self.column.selection_clear
 		self.selection_set = self.column.selection_set
 		self.size = self.column.size
+		self.delete = self.column.delete
 	def scroll(self, *args):
 		raise NotImplementedError("You need to implement this for each column individually")
 class IDColumn(Column):
@@ -78,6 +79,47 @@ class DateColumn(Column):
 		for i in [self.master.idColumn, self.master.descriptionColumn]:
 			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
+class DateBox(tk.Frame):
+	def __init__(self, master, text=""):
+		tk.Frame.__init__(self, master)
+		self.master = master
+		self.frame = tk.Frame(self)
+		self.label = tk.Label(self.frame, text=text)
+		self.label.pack(side="left")
+		self.textbox = tk.Entry(self.frame, validate='key', vcmd=(self.master.register(self.validateDate), '%P'))
+		self.textbox.pack(side="left")
+		self.today = tk.Button(self.frame, text="Today", command=self.insertToday)
+		self.today.pack(side='left')
+		self.frame.pack()
+		self.insert = self.textbox.insert
+		self.get = self.textbox.get
+		self.delete = self.textbox.delete
+		self.complaining = False
+		self.complaint = tk.Label(self, fg="red", text='')
+		self.complaint.pack()
+	def insertToday(self): 
+		self.delete(0, len(self.get()))
+		self.insert(0, datetime.datetime.today().strftime("%Y-%m-%d"))
+	def validateDate(self, text):
+		date = re.compile(r"\d\d\d\d-\d\d-\d\d")
+		if text == "":
+			self.complaining = False
+			self.complaint.config(text="")
+		elif date.match(text):
+			try:
+				if datetime.datetime.today() >= datetime.datetime.strptime(text, "%Y-%m-%d"):
+					self.complaint.config(text="")
+					self.complaining = False
+				else:
+					self.complaint.config(text="That date is in the future!")
+					self.complaining = True
+			except ValueError:
+				self.complaint.config(text="That date isn't properly formatted")
+				self.complaining = True
+		else:
+			self.complaint.config(text="That date isn't properly formatted")
+			self.complaining = True
+		return True
 class TShirtPicker(tk.Tk):
 	def __init__(self, GUI):
 		self.all = '*'
@@ -87,11 +129,11 @@ class TShirtPicker(tk.Tk):
 		self.shirts = []
 		self.resizable(0, 0)
 		self.buttonFrame = tk.Frame(self, height=15)
-		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = pickAShirt)
+		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = lambda: PickShirtWindow(self))
 		self.pickButton.pack(side='left')
-		self.addButton = tk.Button(self.buttonFrame, text="Add a Shirt", command = lambda: NewShirtWindow())
+		self.addButton = tk.Button(self.buttonFrame, text="Add a Shirt", command = lambda: NewShirtWindow(self))
 		self.addButton.pack(side='left')
-		self.updateButton = tk.Button(self.buttonFrame, command=updateShirt, text="Update a Shirt", state="disabled")
+		self.updateButton = tk.Button(self.buttonFrame, text="Update a Shirt", state="disabled", command=(lambda: UpdateWindow(self, self.shirts[self.idColumn.curselection()[0]]) if self.idColumn.curselection() else lambda: None))
 		self.updateButton.pack(side='left')
 		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt, text="Delete a Shirt", state="disabled")
 		self.deleteButton.pack(side='left')
@@ -100,7 +142,8 @@ class TShirtPicker(tk.Tk):
 		self.idColumn = IDColumn(self)
 		self.dateColumn = DateColumn(self)
 		self.descriptionColumn = DescriptionColumn(self)
-		for i in [self.idColumn, self.descriptionColumn, self.dateColumn]:
+		self.columns = [self.idColumn, self.descriptionColumn, self.dateColumn]
+		for i in self.columns:
 			i.pack(side="left")
 		self.scrollbar.pack(side="left", fill="y")
 		self.onOpen(GUI)
@@ -114,10 +157,12 @@ class TShirtPicker(tk.Tk):
 		except sqlite3.Error:
 			conn = sqlite3.connect("shirts.db")
 			c = conn.cursor()
-			c.execute("create table shirts (id INTEGER, description, lasttime")
+			c.execute("create table shirts (id, description, lasttime")
 			conn.commit()
 			self.onOpen()
 	def populate(self):
+		for i in [self.dateColumn, self.idColumn, self.descriptionColumn]:
+			i.delete(0, tk.END)
 		for i in self.shirts:
 			i.addToList(self.idColumn, self.descriptionColumn, self.dateColumn)
 	def clickColumn(self, event):
@@ -134,57 +179,81 @@ class TShirtPicker(tk.Tk):
 			if event.widget is not self.idColumn:
 				self.idColumn.selection_clear(0, self.idColumn.size()-1)
 				self.idColumn.selection_set(selection[0])
-class PickShirtWindow(tk.Toplevel):
+class PickShirtWindow:
 	def __init__(self, master):
-		tk.Toplevel.__init__(self)
 		self.master = master
-		one = pick()
+		one = self.pick()
 		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
 			one.wearToday()
 			master.populate()
 			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
 		else:
 			tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
-	def pick():
+	def pick(self):
 		weighted = []
-		for i in master.shirts:
+		for i in self.master.shirts:
 			for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
 				weighted.append(i)
 		return random.choice(weighted)
+class UpdateWindow(tk.Toplevel):
+	def __init__(self, master, shirt):
+		tk.Toplevel.__init__(self)
+		self.shirt = shirt
+		self.bind("<Escape>", self.destroy)
+		tk.Label(self, text="Description").pack()
+		self.descriptionBox = tk.Entry(self)
+		self.descriptionBox.insert(0, self.shirt.description)
+		self.descriptionBox.pack()
+		tk.Label(self, text="Last worn (YYYY-MM-DD)").pack()
+		self.dateEntry = DateBox(self)
+		self.dateEntry.insert(0, self.shirt.lastTime)
+		self.dateEntry.pack()
+		self.buttons = tk.Frame(self)
+		self.ok = tk.Button(self.buttons, text="OK", command=self.finish)
+		self.ok.pack(side="left")
+		self.cancel = tk.Button(self.buttons, text="Cancel", command = self.destroy)
+		self.cancel.pack(side="left")
+		self.buttons.pack()
+	def finish(self):
+		if self.dateEntry.complaining:
+			return
+		else:
+			self.shirt.update(self.descriptionBox.get(), self.dateEntry.get())
+			self.master.populate()
+			self.destroy()
 # This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
 		self.description = description
 		# If you don't know when you wore it, say you wore it a week ago. 
 		if lastTime == '':
-			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime(date_format)
+			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime("%Y-%m-%d")
 		else: 
 			self.lastTime = lastTime
 		# If the id is zero (it doesn't have one), tack it on to the end of the list. 
 		if id == 0:
 			# If the list is empty, it's number 1. 
-			if len(select(all)) == 0:
+			if len(select('*')) == 0:
 				self.id = 1
 			else:
-				self.id = select(all)[-1][0]+1
+				self.id = select('*')[-1][0]+1
 			insert(self.id, self.description, self.lastTime)
 		else: 
 			self.id = id
 	# This updates both the database and the python list.
 	def wearToday(self):
-		update(self.id, datetime.date.today().strftime(date_format))
-		self.lastTime = datetime.date.today().strftime(date_format)
+		update(self.id, datetime.date.today().strftime("%Y-%m-%d"))
+		self.lastTime = datetime.date.today().strftime("%Y-%m-%d")
 	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
 	def addToList(self, idColumn, descriptionColumn, dateColumn):
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
-	def update(self, description, lastTime, gui = True):
+	def update(self, description, lastTime):
 		self.description = description
 		self.lastTime = lastTime
 		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
-		if gui:
-			populate()
+		db.commit()
 class NewShirtWindow(tk.Toplevel):
 	def __init__(self, master):
 		tk.Toplevel.__init__(self)
@@ -196,47 +265,18 @@ class NewShirtWindow(tk.Toplevel):
 		self.enterDescription=tk.Entry(self)
 		self.enterDescription.pack()
 		tk.Label(self, text='When was the last day you wore the shirt, \napproxamately, in YYYY-MM-DD format? \nOr leave it blank if you don\'t know.').pack()
-		self.dateFrame = tk.Frame(self)
-		self.enterDate = tk.Entry(self.dateFrame, validate='key', vcmd=(self.master.register(self.validateDate), '%P'))
-		self.enterDate.pack(side="left")
-		self.today_button = tk.Button(self.dateFrame, text="Today", command=self.insertTodaysDate)
-		self.today_button.pack(side="left")
-		self.dateFrame.pack(pady=5)
-		self.complaint = tk.Label(self, text="", fg='red')
-		self.complaint.pack()
+		self.dateBox = DateBox(self)
+		self.dateBox.pack()
 		self.submit_button = tk.Button(self, text="Done", command= self.finishShirt)
 		self.submit_button.pack(pady=5)
-	def insertTodaysDate(self): 
-		self.enterDate.delete(0, len(self.enterDate.get()))
-		self.enterDate.insert(0, datetime.datetime.today().strftime(date_format))
-	def validateDate(self, newText): 
-		date = re.compile(r"\d\d\d\d-\d\d-\d\d")
-		if newText == "":
-			self.complaint.config(text="")
-			self.complaining = False
-		elif date.match(newText):
-			try:
-				if datetime.datetime.today() >= datetime.datetime.strptime(newText, date_format):
-					self.complaint.config(text="")
-					self.complaining = False
-				else:
-					self.complaint.config(text="That date is in the future!")
-					self.complaining = True
-			except ValueError:
-				self.complaint.config(text="That date isn't properly formatted")
-				self.complaining = True
-		else:
-			self.complaint.config(text="That date isn't properly formatted")
-			self.complaining = True
-		return True
 	def finishShirt(self):
-		self.validateDate(self.enterDate.get())
-		if self.complaining:
+		self.dateBox.validateDate(self.dateBox.get())
+		if self.dateBox.complaining:
 			return
 		else:
 			if self.enterDescription.get() != "" or tk.messagebox.askyesno("Empty Description", "Do you want to make a shirt with an empty description?"):
-				shirts.append(Shirt(0, self.enterDescription.get(), self.enterDate.get()))
-				shirts[-1].addToList()
+				self.master.shirts.append(Shirt(0, self.enterDescription.get(), self.dateBox.get()))
+				self.master.shirts[-1].addToList(*self.master.columns)
 				self.destroy()
 def deleteShirt():
 	global idColumn, descriptionColumn, dateColumn
@@ -247,21 +287,9 @@ def deleteShirt():
 			idColumn.delete(selection[0])
 			descriptionColumn.delete(selection[0])
 			dateColumn.delete(selection[0])
-# This puts today's date into a specific box. 
-def insertTodaysDate(event):
-	enterDate.insert('end', datetime.datetime.today().strftime(date_format))
 
-# This picks the shirt.
-def pickAShirt():
-	one = pick()
-	if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
-		one.wearToday()
-		populate()
-		tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
-	else:
-		tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 def finishUpdate():
-	if not datetime.datetime.today() < datetime.datetime.strptime(dateEntry.get(), date_format):
+	if not datetime.datetime.today() < datetime.datetime.strptime(dateEntry.get(), "%Y-%m-%d"):
 		shirts[int(updateSelection[0])].update(descriptionEntry.get(), dateEntry.get())
 		updateDialog.destroy()
 	else:
@@ -310,7 +338,7 @@ else:
 			descrip = input("Give a short description of the shirt \n")
 			last = input("When was the last time you wore the shirt, in YYYY-MM-DD format? Or leave it blank if it was never worn \n")
 			if last == '':
-				last = (datetime.datetime.today()-datetime.timedelta(days=14)).strftime(date_format)
+				last = (datetime.datetime.today()-datetime.timedelta(days=14)).strftime("%Y-%m-%d")
 			shirts.append(Shirt(0, descrip, last))
 		elif command.lower() == "pick":
 			done = False
