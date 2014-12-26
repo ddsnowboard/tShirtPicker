@@ -12,7 +12,6 @@ except ImportError:
 	tk.messagebox = tkMessageBox
 	input = raw_input
 import re
-shirts = []
 db = sqlite3.connect("shirts.db")
 c = db.cursor()
 all = '*'
@@ -50,22 +49,22 @@ class Column(tk.Frame):
 	def __init__(self, master):
 		tk.Frame.__init__(self, master)
 		self.master = master
-		self.text = text
 		self.label = tk.Label(self)
-		self.column = tk.Listbox(self, bd=1, height=30, width=10, selectmode='single', exportselection=0, yscrollcommand=self.scroll)
+		self.column = tk.Listbox(self, bd=1, height=30, width=20, selectmode='single', exportselection=0, yscrollcommand=self.scroll)
 		self.curselection = self.column.curselection
 		self.config = self.column.config
 		self.label.pack()
 		self.column.pack()
+		self.insert = self.column.insert
 	def scroll(self, *args):
 		raise NotImplementedError("You need to implement this for each column individually")
 class IDColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
-		self.label.config(text="id")
+		self.label.config(text="ID")
 	def scroll(self, *args):
 		for i in [self.master.dateColumn, self.master.descriptionColumn]:
-			i.yview_moveto(args[0])
+			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class DescriptionColumn(Column):
 	def __init__(self, master):
@@ -73,31 +72,32 @@ class DescriptionColumn(Column):
 		self.label.config(text="Description")
 	def scroll(self, *args):
 		for i in [self.master.dateColumn, self.master.idColumn]:
-			i.yview_moveto(args[0])
+			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class DateColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="Last Worn")
 	def scroll(self, *args):
-		for i in [self.master.idColumn, self.master.descriptionColumn]"
-			i.yview_moveto(args[0])
+		for i in [self.master.idColumn, self.master.descriptionColumn]:
+			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class TShirtPicker(tk.Tk):
-	def __init__(self):
+	def __init__(self, GUI):
 		self.all = '*'
 		self.date_format = "%Y-%m-%d"
 		tk.Tk.__init__(self)
 		self.title("T-Shirt Picker")
+		self.shirts = []
 		self.resizable(0, 0)
 		self.buttonFrame = tk.Frame(self, height=15)
 		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = pickAShirt)
 		self.pickButton.pack(side='left')
-		self.addButton = tk.Button(self.buttonFrame, command = lambda: NewShirtWindow())
+		self.addButton = tk.Button(self.buttonFrame, text="Add a Shirt", command = lambda: NewShirtWindow())
 		self.addButton.pack(side='left')
-		self.updateButton = tk.Button(self.buttonFrame, command=updateShirt)
+		self.updateButton = tk.Button(self.buttonFrame, command=updateShirt, text="Update a Shirt")
 		self.updateButton.pack(side='left')
-		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt)
+		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt, text="Delete a Shirt")
 		self.deleteButton.pack(side='left')
 		self.buttonFrame.pack(expand=1, pady=4)
 		self.scrollbar = tk.Scrollbar(self, orient='vertical')
@@ -105,11 +105,28 @@ class TShirtPicker(tk.Tk):
 		self.dateColumn = DateColumn(self)
 		self.descriptionColumn = DescriptionColumn(self)
 		for i in [self.idColumn, self.descriptionColumn, self.dateColumn]:
-			i.pack()
+			i.pack(side="left")
+		self.scrollbar.pack(side="left", fill="y")
+		self.onOpen(GUI)
+	def onOpen(self, GUI):
+		# When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
+		try:
+			for i in select('*'):
+				self.shirts.append(Shirt(i[0], i[1], i[2]))
+			if GUI:
+				self.populate()
+		except sqlite3.Error:
+			conn = sqlite3.connect("shirts.db")
+			c = conn.cursor()
+			c.execute("create table shirts (id INTEGER, description, lasttime")
+			conn.commit()
+			self.onOpen()
+	def populate(self):
+		for i in self.shirts:
+			i.addToList(self.idColumn, self.descriptionColumn, self.dateColumn)
 # This is the shirt class. 
 class Shirt:
 	def __init__(self, id, description, lastTime):
-		global db
 		self.description = description
 		# If you don't know when you wore it, say you wore it a week ago. 
 		if lastTime == '':
@@ -131,8 +148,7 @@ class Shirt:
 		update(self.id, datetime.date.today().strftime(date_format))
 		self.lastTime = datetime.date.today().strftime(date_format)
 	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
-	def addToList(self):
-		global idColumn, descriptionColumn, dateColumn
+	def addToList(self, idColumn, descriptionColumn, dateColumn):
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
@@ -142,23 +158,6 @@ class Shirt:
 		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
 		if gui:
 			populate()
-# This empties all the lists in the GUI and re-populates them with shirts. 
-def populate():
-	idColumn.delete(0, 'end')
-	dateColumn.delete(0, 'end')
-	descriptionColumn.delete(0,'end')
-	for i in shirts:
-		i.addToList()
-# When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
-def onOpen(gui = True):
-	try:
-		for i in select(all):
-			shirts.append(Shirt(i[0], i[1], i[2]))
-		if gui: 
-			populate()
-	except sqlite3.Error:
-		c.execute("create table shirts (id, description, lasttime);")
-		onOpen()
 # This covers the selecting of the other columns when you click on the one. 
 def clickColumn(event):
 	selection = event.widget.curselection()
@@ -301,58 +300,57 @@ def idScroll(*args):
 	scrollbar.set(*args)
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
-	root = TShirtPicker()
+	root = TShirtPicker(True)
 	# Makes the window unable to be resized because that breaks everything. 
-	root.resizable(0,0)
 	
 	# These are constants, pretty much, but I don't want to use a magic number.
 	all = '*'
 	date_format = "%Y-%m-%d"
 
 	root.title("T-Shirt Picker")
-	buttons = tk.Frame(root, height=15)
-	pickButton = tk.Button(buttons, text="Pick today's shirt")
-	addButton = tk.Button(buttons, text="Add a shirt")
+	# buttons = tk.Frame(root, height=15)
+	# pickButton = tk.Button(buttons, text="Pick today's shirt")
+	# addButton = tk.Button(buttons, text="Add a shirt")
 	# These are disabled until you select something. 
-	updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
-	deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
-	scrollbar = tk.Scrollbar(root, orient='vertical')
-	idFrame = tk.Frame(root, width=10, height=30)
-	idLabel = tk.Label(idFrame, text="ID")
-	idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
-	descriptionFrame = tk.Frame(root, width=40, height=30)
-	descriptionLabel = tk.Label(descriptionFrame, text="Description")
-	descriptionColumn = tk.Listbox(descriptionFrame, bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
-	dateFrame = tk.Frame(root, height=30, width=15)
-	dateLabel = tk.Label(dateFrame, text="Last Worn")
-	dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
-	idColumn.config(yscrollcommand = idScroll)
-	descriptionColumn.config(yscrollcommand = descriptionScroll)
-	dateColumn.config(yscrollcommand = dateScroll)
-	pickButton.config(command=pickAShirt)
-	pickButton.pack(side='left')
-	addButton.config(command=lambda: NewShirtWindow(root))
-	addButton.pack(side='left')
-	deleteButton.config(command=deleteShirt)
-	deleteButton.pack(side='left')
-	updateButton.config(command=updateShirt)
-	updateButton.pack(side='left')
-	buttons.pack(expand=1, pady=4)
-	idLabel.pack()
-	idColumn.bind('<ButtonRelease-1>', clickColumn)
-	idColumn.pack()
-	idFrame.pack(side='left')
-	descriptionLabel.pack()
-	descriptionColumn.bind('<ButtonRelease-1>', clickColumn)
-	descriptionColumn.pack()
-	descriptionFrame.pack(side='left')
-	dateLabel.pack()
-	dateColumn.bind('<ButtonRelease-1>', clickColumn)
-	dateColumn.pack()
-	dateFrame.pack(side='left')
-	scrollbar.config(command=scrollBar)
-	scrollbar.pack(side='left', fill='y')
-	onOpen()
+	# updateButton = tk.Button(buttons, text="Update a shirt", state="disabled")
+	# deleteButton = tk.Button(buttons, text='Delete a shirt', state='disabled')
+	# scrollbar = tk.Scrollbar(root, orient='vertical')
+	# idFrame = tk.Frame(root, width=10, height=30)
+	# idLabel = tk.Label(idFrame, text="ID")
+	# idColumn = tk.Listbox(idFrame, bd=1, height=30, width=10, selectmode='single', exportselection=0,  yscrollcommand=scrollbar.set)
+	# descriptionFrame = tk.Frame(root, width=40, height=30)
+	# descriptionLabel = tk.Label(descriptionFrame, text="Description")
+	# descriptionColumn = tk.Listbox(descriptionFrame, bd=1, height=30, width=40, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+	# dateFrame = tk.Frame(root, height=30, width=15)
+	# dateLabel = tk.Label(dateFrame, text="Last Worn")
+	# dateColumn = tk.Listbox(dateFrame, height=30, width=15, selectmode='single', exportselection=0, yscrollcommand=scrollbar.set)
+	# idColumn.config(yscrollcommand = idScroll)
+	# descriptionColumn.config(yscrollcommand = descriptionScroll)
+	# dateColumn.config(yscrollcommand = dateScroll)
+	# pickButton.config(command=pickAShirt)
+	# pickButton.pack(side='left')
+	# addButton.config(command=lambda: NewShirtWindow(root))
+	# addButton.pack(side='left')
+	# deleteButton.config(command=deleteShirt)
+	# deleteButton.pack(side='left')
+	# updateButton.config(command=updateShirt)
+	# updateButton.pack(side='left')
+	# buttons.pack(expand=1, pady=4)
+	# idLabel.pack()
+	# idColumn.bind('<ButtonRelease-1>', clickColumn)
+	# idColumn.pack()
+	# idFrame.pack(side='left')
+	# descriptionLabel.pack()
+	# descriptionColumn.bind('<ButtonRelease-1>', clickColumn)
+	# descriptionColumn.pack()
+	# descriptionFrame.pack(side='left')
+	# dateLabel.pack()
+	# dateColumn.bind('<ButtonRelease-1>', clickColumn)
+	# dateColumn.pack()
+	# dateFrame.pack(side='left')
+	# scrollbar.config(command=scrollBar)
+	# scrollbar.pack(side='left', fill='y')
+	# onOpen()
 	root.mainloop()
 else:
 	onOpen(False)
