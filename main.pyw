@@ -15,26 +15,26 @@ import re
 db = sqlite3.connect("shirts.db")
 c = db.cursor()
 # insert(), select(), update(), and delete() are functions that abstract the actual sql from me. 
-def insert(id, description, lasttime):
-	c.execute("insert into shirts (id, description, lasttime) VALUES (?, ?, ?);", (id, description, lasttime))
+def insert(id, description, lasttime, rating):
+	c.execute("insert into shirts2 (id, description, lasttime, rating) VALUES (?, ?, ?, ?);", (id, description, lasttime, rating))
 	db.commit()
 def select(rows, params = ''):
 	end = []
 	if rows == "*":
-		for i in c.execute("select * from shirts ORDER BY id;"):
+		for i in c.execute("select * from shirts2 ORDER BY id;"):
 			end.append(i)
 	elif params == '': 
-		for i in c.execute("select ? from shirts ORDER BY id;", (rows,)):
+		for i in c.execute("select ? from shirts2 ORDER BY id;", (rows,)):
 			end.append(i)
 	else:
-		for i in c.execute("select ? from shirts WHERE ? ORDER BY id;", (rows, params)):
+		for i in c.execute("select ? from shirts2 WHERE ? ORDER BY id;", (rows, params)):
 			end.append(i)
 	return end
-def update(id, lasttime):
-	c.execute("update shirts SET lasttime = ? WHERE id = ?;", (lasttime, id))
+def update(id, description, lasttime, rating):
+	c.execute("update shirts2 SET lasttime = ?, description = ?, rating = ? WHERE id = ?;", (lasttime, description, rating, id))
 	db.commit()
 def delete(id):
-	c.execute("delete from shirts WHERE id=?;", (id,))
+	c.execute("delete from shirts2 WHERE id=?;", (id,))
 	db.commit()
 class Column(tk.Frame):
 	def __init__(self, master):
@@ -79,6 +79,11 @@ class DateColumn(Column):
 		for i in [self.master.idColumn, self.master.descriptionColumn]:
 			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
+class RatingColumn(Column):
+	def __init__(self, master):
+		Column.__init__(self, master)
+		self.label.config(text = "Rating")
+		
 class DateBox(tk.Frame):
 	def __init__(self, master, text=""):
 		tk.Frame.__init__(self, master)
@@ -120,6 +125,42 @@ class DateBox(tk.Frame):
 			self.complaint.config(text="That date isn't properly formatted")
 			self.complaining = True
 		return True
+class Star(tk.Label):
+	def __init__(self, master, status, index):
+		tk.Label.__init__(self, master)
+		self.master = master
+		self.status = status
+		self.index = index
+		self.onImage = tk.PhotoImage(file="filled_star.gif")
+		self.offImage = tk.PhotoImage(file="empty_star.gif")
+		if self.status == 1:
+			self.config(image=self.onImage)
+		elif self.status == 0:
+			self.config(image=self.offImage)
+		self.bind("<Button-1>", lambda x: self.master.click(self.index))
+	def set(self, status):
+		self.status = status
+		if status == 1:
+			self.config(image=self.onImage)
+		elif status == 0:
+			self.config(image=self.offImage)
+	def getStatus(self):
+		return self.status
+class RatingField(tk.Frame):
+	def __init__(self, master, default = 3):
+		tk.Frame.__init__(self, master)
+		self.master = master
+		self.NUM_OF_STARS = 5
+		self.stars = []
+		for i in range(self.NUM_OF_STARS):
+			self.stars.append(Star(self, 0, i))
+			self.stars[-1].pack(side='left')
+		self.click(default)
+	def click(self, index):
+		for i in self.stars:
+			i.set(0)
+		for i in range(index):
+			self.stars[i].set(1)
 class DeleteShirtWindow:
 	def __init__(self, master, shirt, index):
 		if tk.messagebox.askyesno("Delete", "Do you really want to delete \"{}\"?".format(shirt.description)):
@@ -161,11 +202,24 @@ class TShirtPicker(tk.Tk):
 			if GUI:
 				self.populate()
 		except sqlite3.Error:
-			conn = sqlite3.connect("shirts.db")
-			c = conn.cursor()
-			c.execute("create table shirts (id, description, lasttime")
-			conn.commit()
-			self.onOpen()
+			try:
+				self.convert()
+			except sqlite3.Error:
+				conn = sqlite3.connect("shirts.db")
+				c = conn.cursor()
+				c.execute("create table shirts2 (id, description, lasttime, rating")
+				conn.commit()
+				self.onOpen()
+	def convert(self):
+		conn = sqlite3.connect("shirts.db")
+		c = conn.cursor()
+		temp = []
+		for i in c.execute("select * from shirts"):
+			temp.append(Shirt(i[0], i[1], i[2]))
+		c.execute("create table shirts2")
+		for i in temp:
+			insert(i.id, i.description, i.lasttime, i.rating)
+		conn.commit()
 	def populate(self):
 		for i in [self.dateColumn, self.idColumn, self.descriptionColumn]:
 			i.delete(0, tk.END)
@@ -231,8 +285,9 @@ class UpdateWindow(tk.Toplevel):
 			self.destroy()
 # This is the shirt class. 
 class Shirt:
-	def __init__(self, id, description, lastTime):
+	def __init__(self, id, description, lastTime, rating = 3):
 		self.description = description
+		self.rating = rating
 		# If you don't know when you wore it, say you wore it a week ago. 
 		if lastTime == '':
 			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime("%Y-%m-%d")
@@ -253,14 +308,16 @@ class Shirt:
 		update(self.id, datetime.date.today().strftime("%Y-%m-%d"))
 		self.lastTime = datetime.date.today().strftime("%Y-%m-%d")
 	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
-	def addToList(self, idColumn, descriptionColumn, dateColumn):
+	def addToList(self, idColumn, descriptionColumn, dateColumn, ratingColumn):
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
-	def update(self, description, lastTime):
+		ratingColumn.insert("end", self.rating)
+	def update(self, description, lastTime, rating):
 		self.description = description
+		self.rating = rating
 		self.lastTime = lastTime
-		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
+		c.execute('update shirts set description=?, lasttime=?, rating=? where id=?', (self.description, self.lastTime, self.rating, self.id))
 		db.commit()
 class NewShirtWindow(tk.Toplevel):
 	def __init__(self, master):
