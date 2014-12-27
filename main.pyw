@@ -269,7 +269,7 @@ class UpdateWindow(tk.Toplevel):
 		self.dateEntry = DateBox(self)
 		self.dateEntry.insert(0, self.shirt.lastTime)
 		self.dateEntry.pack()
-		self.ratingField = RatingField(self)
+		self.ratingField = RatingField(self, shirt.rating)
 		self.ratingField.pack()
 		self.buttons = tk.Frame(self)
 		self.ok = tk.Button(self.buttons, text="OK", command=self.finish)
