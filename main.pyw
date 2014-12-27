@@ -120,6 +120,12 @@ class DateBox(tk.Frame):
 			self.complaint.config(text="That date isn't properly formatted")
 			self.complaining = True
 		return True
+class DeleteShirtWindow:
+	def __init__(self, master, shirt, index):
+		if tk.messagebox.askyesno("Delete", "Do you really want to delete \"{}\"?".format(shirt.description)):
+			delete(shirt.id)
+			master.shirts.pop(index)
+			master.populate()
 class TShirtPicker(tk.Tk):
 	def __init__(self, GUI):
 		self.all = '*'
@@ -135,7 +141,7 @@ class TShirtPicker(tk.Tk):
 		self.addButton.pack(side='left')
 		self.updateButton = tk.Button(self.buttonFrame, text="Update a Shirt", state="disabled", command=(lambda: UpdateWindow(self, self.shirts[self.idColumn.curselection()[0]]) if self.idColumn.curselection() else lambda: None))
 		self.updateButton.pack(side='left')
-		self.deleteButton = tk.Button(self.buttonFrame, command=deleteShirt, text="Delete a Shirt", state="disabled")
+		self.deleteButton = tk.Button(self.buttonFrame, command=lambda: DeleteShirtWindow(self, self.shirts[self.idColumn.curselection()[0]], self.idColumn.curselection()[0]) if self.idColumn.curselection() else lambda: None, text="Delete a Shirt", state="disabled")
 		self.deleteButton.pack(side='left')
 		self.buttonFrame.pack(expand=1, pady=4)
 		self.scrollbar = tk.Scrollbar(self, orient='vertical')
@@ -287,40 +293,6 @@ def deleteShirt():
 			idColumn.delete(selection[0])
 			descriptionColumn.delete(selection[0])
 			dateColumn.delete(selection[0])
-
-def finishUpdate():
-	if not datetime.datetime.today() < datetime.datetime.strptime(dateEntry.get(), "%Y-%m-%d"):
-		shirts[int(updateSelection[0])].update(descriptionEntry.get(), dateEntry.get())
-		updateDialog.destroy()
-	else:
-		complaint.set("You have to put in a past date, you fool!")
-def updateShirt():
-	global idColumn, updateSelection, descriptionEntry, dateEntry, updateDialog, complaint
-	updateSelection = idColumn.curselection()
-	if updateSelection:
-		updateDialog = tk.Tk()
-		updateDialog.bind("<Escape>", lambda n: updateDialog.destroy())
-		complaint = tk.StringVar(updateDialog)
-		tk.Label(updateDialog, text="Change the attributes of \"%s\" to how \nyou want them, then press OK, or cancel to cancel." % (str(shirts[int(updateSelection[0])].description))).pack()
-		descriptionFrame = tk.Frame(updateDialog)
-		tk.Label(descriptionFrame, text="Description: ").pack(side='left')
-		descriptionEntry = tk.Entry(descriptionFrame)
-		descriptionEntry.bind("<Return>", lambda n: finishUpdate())
-		descriptionEntry.insert(0, shirts[int(updateSelection[0])].description)
-		descriptionEntry.pack(side='left')
-		descriptionFrame.pack()
-		dateFrame = tk.Frame(updateDialog)
-		tk.Label(dateFrame, text="Last worn (YYYY-MM-DD): ").pack(side='left')
-		dateEntry = tk.Entry(dateFrame)
-		dateEntry.insert(0, shirts[int(updateSelection[0])].lastTime)
-		dateEntry.pack(side='left')
-		dateEntry.bind("<Return>", finishUpdate)
-		dateFrame.pack()
-		tk.Label(updateDialog, textvariable = complaint, fg='red').pack()
-		buttonFrame = tk.Frame(updateDialog)
-		tk.Button(buttonFrame, text="OK", command=finishUpdate).pack(side='left')
-		tk.Button(buttonFrame, text="Cancel", command=updateDialog.destroy).pack(side='left')
-		buttonFrame.pack()
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
 	root = TShirtPicker(True)
