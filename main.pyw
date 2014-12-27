@@ -205,7 +205,6 @@ class TShirtPicker(tk.Tk):
 			try:
 				self.convert()
 			except sqlite3.Error:
-				raise
 				conn = sqlite3.connect("shirts.db")
 				c = conn.cursor()
 				c.execute("create table shirts2 (id, description, lasttime, rating)")
@@ -243,16 +242,16 @@ class PickShirtWindow:
 	def __init__(self, master):
 		self.master = master
 		one = self.pick()
-		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
+		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+str(one.description)+"\" ?"):
 			one.wearToday()
 			master.populate()
-			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
+			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+str(one.description)+"\" today.")
 		else:
 			tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 	def pick(self):
 		weighted = []
 		for i in self.master.shirts:
-			for j in range((int(10*sqrt(i.rating)))*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
+			for j in range(i.rating*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
 				weighted.append(i)
 		return random.choice(weighted)
 class UpdateWindow(tk.Toplevel):
@@ -307,8 +306,8 @@ class Shirt:
 			self.id = id
 	# This updates both the database and the python list.
 	def wearToday(self):
-		update(self.id, datetime.date.today().strftime("%Y-%m-%d"), self.lastTime, self.rating)
 		self.lastTime = datetime.date.today().strftime("%Y-%m-%d")
+		update(self.id, self.description, self.lastTime, self.rating)
 	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
 	def addToList(self, idColumn, descriptionColumn, dateColumn, ratingColumn):
 		idColumn.insert('end', self.id)
