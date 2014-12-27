@@ -3,6 +3,7 @@ import datetime
 import random
 import sys
 import WillsLib
+from math import sqrt
 try:
 	import tkinter as tk
 	from tkinter import messagebox
@@ -251,7 +252,7 @@ class PickShirtWindow:
 	def pick(self):
 		weighted = []
 		for i in self.master.shirts:
-			for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
+			for j in range((int(10*sqrt(i.rating)))*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
 				weighted.append(i)
 		return random.choice(weighted)
 class UpdateWindow(tk.Toplevel):
