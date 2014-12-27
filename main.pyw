@@ -3,7 +3,6 @@ import datetime
 import random
 import sys
 import WillsLib
-from math import sqrt
 try:
 	import tkinter as tk
 	from tkinter import messagebox
