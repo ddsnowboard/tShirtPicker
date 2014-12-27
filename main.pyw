@@ -88,8 +88,8 @@ class DateBox(tk.Frame):
 		self.label.pack(side="left")
 		self.textbox = tk.Entry(self.frame, validate='key', vcmd=(self.master.register(self.validateDate), '%P'))
 		self.textbox.pack(side="left")
-		self.today = tk.Button(self.frame, text="Today", command=self.insertToday)
-		self.today.pack(side='left')
+		self.today = tk.Button(self.frame, text="Today", command=self.insertToday, padx=3)
+		self.today.pack(side='left', padx=5)
 		self.frame.pack()
 		self.insert = self.textbox.insert
 		self.get = self.textbox.get
@@ -204,8 +204,10 @@ class PickShirtWindow:
 class UpdateWindow(tk.Toplevel):
 	def __init__(self, master, shirt):
 		tk.Toplevel.__init__(self)
+		self.focus_set()
 		self.shirt = shirt
-		self.bind("<Escape>", self.destroy)
+		self.bind("<Escape>", lambda x: self.destroy())
+		self.bind("<Return>", lambda x: self.finish())
 		tk.Label(self, text="Description").pack()
 		self.descriptionBox = tk.Entry(self)
 		self.descriptionBox.insert(0, self.shirt.description)
@@ -266,16 +268,18 @@ class NewShirtWindow(tk.Toplevel):
 		self.complaining = False
 		self.master = master
 		self.bind("<Escape>", lambda x: self.destroy())
+		self.bind("<Return>", lambda x: self.finish())
 		# Can I set the title to something better?
 		tk.Label(self, text="Give a short description of the shirt").pack()
 		self.enterDescription=tk.Entry(self)
 		self.enterDescription.pack()
+		self.enterDescription.focus_set()
 		tk.Label(self, text='When was the last day you wore the shirt, \napproxamately, in YYYY-MM-DD format? \nOr leave it blank if you don\'t know.').pack()
 		self.dateBox = DateBox(self)
 		self.dateBox.pack()
-		self.submit_button = tk.Button(self, text="Done", command= self.finishShirt)
+		self.submit_button = tk.Button(self, text="Done", command= self.finish)
 		self.submit_button.pack(pady=5)
-	def finishShirt(self):
+	def finish(self):
 		self.dateBox.validateDate(self.dateBox.get())
 		if self.dateBox.complaining:
 			return
@@ -284,22 +288,12 @@ class NewShirtWindow(tk.Toplevel):
 				self.master.shirts.append(Shirt(0, self.enterDescription.get(), self.dateBox.get()))
 				self.master.shirts[-1].addToList(*self.master.columns)
 				self.destroy()
-def deleteShirt():
-	global idColumn, descriptionColumn, dateColumn
-	selection = idColumn.curselection()
-	if selection:
-		if tk.messagebox.askyesno("Delete", "Do you really want to delete the shirt \""+str(shirts[int(selection[0])].description)+"\"?"):
-			delete(shirts.pop(int(selection[0])).id)
-			idColumn.delete(selection[0])
-			descriptionColumn.delete(selection[0])
-			dateColumn.delete(selection[0])
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
 	root = TShirtPicker(True)
 	root.mainloop()
 else:
 	onOpen(False)
-# These are all for the text-based implementation, but I'm working on a GUI.
 	def list():
 		print("Here are your shirts \nID   Description   Last worn")
 		for i in shirts: 
