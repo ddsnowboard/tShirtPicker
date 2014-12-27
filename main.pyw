@@ -59,7 +59,7 @@ class IDColumn(Column):
 		Column.__init__(self, master)
 		self.label.config(text="ID")
 	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.descriptionColumn]:
+		for i in [self.master.dateColumn, self.master.descriptionColumn, self.master.ratingColumn]:
 			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class DescriptionColumn(Column):
@@ -68,7 +68,7 @@ class DescriptionColumn(Column):
 		self.label.config(text="Description")
 		self.column.config(width=40)
 	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.idColumn]:
+		for i in [self.master.dateColumn, self.master.idColumn, self.master.ratingColumn]:
 			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class DateColumn(Column):
@@ -76,14 +76,19 @@ class DateColumn(Column):
 		Column.__init__(self, master)
 		self.label.config(text="Last Worn")
 	def scroll(self, *args):
-		for i in [self.master.idColumn, self.master.descriptionColumn]:
+		for i in [self.master.idColumn, self.master.descriptionColumn, self.master.ratingColumn]:
 			i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
 class RatingColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text = "Rating")
-		
+	def scroll(self, *args):
+		for i in [self.master.idColumn, self.master.descriptionColumn, self.master.dateColumn]:
+			i.column.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
+	def insert(self, value):
+		self.column.insert("end", "{}/5".format(str(value))
 class DateBox(tk.Frame):
 	def __init__(self, master, text=""):
 		tk.Frame.__init__(self, master)
