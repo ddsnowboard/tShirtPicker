@@ -123,8 +123,8 @@ class Star(tk.Label):
 		self.master = master
 		self.status = status
 		self.index = index
-		self.onImage = tk.PhotoImage(file="filled_star.gif")
-		self.offImage = tk.PhotoImage(file="empty_star.gif")
+		self.onImage = tk.PhotoImage(file="res/filled_star.gif")
+		self.offImage = tk.PhotoImage(file="res/empty_star.gif")
 		if self.status == 1:
 			self.config(image=self.onImage)
 		elif self.status == 0:
