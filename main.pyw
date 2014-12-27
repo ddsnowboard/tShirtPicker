@@ -204,7 +204,6 @@ class TShirtPicker(tk.Tk):
 			try:
 				self.convert()
 			except sqlite3.Error:
-				raise
 				conn = sqlite3.connect("shirts.db")
 				c = conn.cursor()
 				c.execute("create table shirts2 (id, description, lasttime, rating)")
