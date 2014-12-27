@@ -53,42 +53,29 @@ class Column(tk.Frame):
 		self.size = self.column.size
 		self.delete = self.column.delete
 	def scroll(self, *args):
-		raise NotImplementedError("You need to implement this for each column individually")
+		for i in self.master.columns:
+			if not i == self:
+				i.column.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
 class IDColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="ID")
-	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.descriptionColumn, self.master.ratingColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 class DescriptionColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="Description")
 		self.column.config(width=40)
-	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.idColumn, self.master.ratingColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 class DateColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="Last Worn")
-	def scroll(self, *args):
-		for i in [self.master.idColumn, self.master.descriptionColumn, self.master.ratingColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 class RatingColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text = "Rating")
-	def scroll(self, *args):
-		for i in [self.master.idColumn, self.master.descriptionColumn, self.master.dateColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 	def insert(self, value):
-		self.column.insert("end", "{}/5".format(str(value))
+		self.column.insert("end", "{}/5".format(str(value)))
 class DateBox(tk.Frame):
 	def __init__(self, master, text=""):
 		tk.Frame.__init__(self, master)
@@ -194,7 +181,8 @@ class TShirtPicker(tk.Tk):
 		self.idColumn = IDColumn(self)
 		self.dateColumn = DateColumn(self)
 		self.descriptionColumn = DescriptionColumn(self)
-		self.columns = [self.idColumn, self.descriptionColumn, self.dateColumn]
+		self.ratingColumn = RatingColumn(self)
+		self.columns = [self.idColumn, self.descriptionColumn, self.dateColumn, self.ratingColumn]
 		for i in self.columns:
 			i.pack(side="left")
 		self.scrollbar.pack(side="left", fill="y")
@@ -203,47 +191,44 @@ class TShirtPicker(tk.Tk):
 		# When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
 		try:
 			for i in select('*'):
-				self.shirts.append(Shirt(i[0], i[1], i[2]))
+				self.shirts.append(Shirt(i[0], i[1], i[2], i[3]))
 			if GUI:
 				self.populate()
 		except sqlite3.Error:
 			try:
 				self.convert()
 			except sqlite3.Error:
+				raise
 				conn = sqlite3.connect("shirts.db")
 				c = conn.cursor()
-				c.execute("create table shirts2 (id, description, lasttime, rating")
+				c.execute("create table shirts2 (id, description, lasttime, rating)")
 				conn.commit()
-				self.onOpen()
+				self.onOpen(True)
 	def convert(self):
 		conn = sqlite3.connect("shirts.db")
 		c = conn.cursor()
 		temp = []
 		for i in c.execute("select * from shirts"):
 			temp.append(Shirt(i[0], i[1], i[2]))
-		c.execute("create table shirts2")
+		c.execute("create table shirts2 (id, description, lasttime, rating)")
 		for i in temp:
-			insert(i.id, i.description, i.lasttime, i.rating)
+			c.execute("insert into shirts2 values(?, ?, ?, ?)", (i.id, i.description, i.lastTime, i.rating))
 		conn.commit()
+		self.onOpen(True)
 	def populate(self):
-		for i in [self.dateColumn, self.idColumn, self.descriptionColumn]:
+		for i in self.columns:
 			i.delete(0, tk.END)
 		for i in self.shirts:
-			i.addToList(self.idColumn, self.descriptionColumn, self.dateColumn)
+			i.addToList(*self.columns)
 	def clickColumn(self, event):
 		selection = event.widget.curselection()
 		if selection:
 			self.deleteButton.config(state='normal')
 			self.updateButton.config(state='normal')
-			if event.widget is not self.descriptionColumn:
-				self.descriptionColumn.selection_clear(0, self.descriptionColumn.size()-1)
-				self.descriptionColumn.selection_set(selection[0])
-			if event.widget is not self.dateColumn:
-				self.dateColumn.selection_clear(0, self.dateColumn.size()-1)
-				self.dateColumn.selection_set(selection[0])
-			if event.widget is not self.idColumn:
-				self.idColumn.selection_clear(0, self.idColumn.size()-1)
-				self.idColumn.selection_set(selection[0])
+			for i in self.columns:
+				if i != event.widget:
+					i.selection_clear(0, self.descriptionColumn.size()-1)
+					i.selection_set(selection[0])
 class PickShirtWindow:
 	def __init__(self, master):
 		self.master = master
