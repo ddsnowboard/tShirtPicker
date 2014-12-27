@@ -15,26 +15,26 @@ import re
 db = sqlite3.connect("shirts.db")
 c = db.cursor()
 # insert(), select(), update(), and delete() are functions that abstract the actual sql from me. 
-def insert(id, description, lasttime):
-	c.execute("insert into shirts (id, description, lasttime) VALUES (?, ?, ?);", (id, description, lasttime))
+def insert(id, description, lasttime, rating):
+	c.execute("insert into shirts2 (id, description, lasttime, rating) VALUES (?, ?, ?, ?);", (id, description, lasttime, rating))
 	db.commit()
 def select(rows, params = ''):
 	end = []
 	if rows == "*":
-		for i in c.execute("select * from shirts ORDER BY id;"):
+		for i in c.execute("select * from shirts2 ORDER BY id;"):
 			end.append(i)
 	elif params == '': 
-		for i in c.execute("select ? from shirts ORDER BY id;", (rows,)):
+		for i in c.execute("select ? from shirts2 ORDER BY id;", (rows,)):
 			end.append(i)
 	else:
-		for i in c.execute("select ? from shirts WHERE ? ORDER BY id;", (rows, params)):
+		for i in c.execute("select ? from shirts2 WHERE ? ORDER BY id;", (rows, params)):
 			end.append(i)
 	return end
-def update(id, lasttime):
-	c.execute("update shirts SET lasttime = ? WHERE id = ?;", (lasttime, id))
+def update(id, description, lasttime, rating):
+	c.execute("update shirts2 SET lasttime = ?, description = ?, rating = ? WHERE id = ?;", (lasttime, description, rating, id))
 	db.commit()
 def delete(id):
-	c.execute("delete from shirts WHERE id=?;", (id,))
+	c.execute("delete from shirts2 WHERE id=?;", (id,))
 	db.commit()
 class Column(tk.Frame):
 	def __init__(self, master):
@@ -53,32 +53,29 @@ class Column(tk.Frame):
 		self.size = self.column.size
 		self.delete = self.column.delete
 	def scroll(self, *args):
-		raise NotImplementedError("You need to implement this for each column individually")
+		for i in self.master.columns:
+			if not i == self:
+				i.column.yview_moveto(args[0])
+		self.master.scrollbar.set(*args)
 class IDColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="ID")
-	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.descriptionColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 class DescriptionColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="Description")
 		self.column.config(width=40)
-	def scroll(self, *args):
-		for i in [self.master.dateColumn, self.master.idColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
 class DateColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
 		self.label.config(text="Last Worn")
-	def scroll(self, *args):
-		for i in [self.master.idColumn, self.master.descriptionColumn]:
-			i.column.yview_moveto(args[0])
-		self.master.scrollbar.set(*args)
+class RatingColumn(Column):
+	def __init__(self, master):
+		Column.__init__(self, master)
+		self.label.config(text = "Rating")
+	def ratingAdd(self, position, value):
+		self.column.insert(position, "{}/5".format(str(value)))
 class DateBox(tk.Frame):
 	def __init__(self, master, text=""):
 		tk.Frame.__init__(self, master)
@@ -120,6 +117,48 @@ class DateBox(tk.Frame):
 			self.complaint.config(text="That date isn't properly formatted")
 			self.complaining = True
 		return True
+class Star(tk.Label):
+	def __init__(self, master, status, index):
+		tk.Label.__init__(self, master)
+		self.master = master
+		self.status = status
+		self.index = index
+		self.onImage = tk.PhotoImage(file="res/filled_star.gif", )
+		self.offImage = tk.PhotoImage(file="res/empty_star.gif")
+		if self.status == 1:
+			self.config(image=self.onImage)
+		elif self.status == 0:
+			self.config(image=self.offImage)
+		self.bind("<Button-1>", lambda x: self.master.click(self.index))
+	def set(self, status):
+		self.status = status
+		if status == 1:
+			self.config(image=self.onImage)
+		elif status == 0:
+			self.config(image=self.offImage)
+	def getStatus(self):
+		return self.status
+class RatingField(tk.Frame):
+	def __init__(self, master, default = 3):
+		tk.Frame.__init__(self, master)
+		self.master = master
+		self.NUM_OF_STARS = 5
+		self.rating = 3
+		self.stars = []
+		for i in range(self.NUM_OF_STARS):
+			self.stars.append(Star(self, 0, i))
+			self.stars[-1].pack(side='left')
+		self.click(default-1)
+	def click(self, index):
+		for i in self.stars:
+			i.set(0)
+		for i in range(index+1):
+			self.stars[i].set(1)
+		self.set(index+1)
+	def get(self):
+		return self.rating
+	def set(self, rating):
+		self.rating = rating
 class DeleteShirtWindow:
 	def __init__(self, master, shirt, index):
 		if tk.messagebox.askyesno("Delete", "Do you really want to delete \"{}\"?".format(shirt.description)):
@@ -144,11 +183,12 @@ class TShirtPicker(tk.Tk):
 		self.deleteButton = tk.Button(self.buttonFrame, command=lambda: DeleteShirtWindow(self, self.shirts[self.idColumn.curselection()[0]], self.idColumn.curselection()[0]) if self.idColumn.curselection() else lambda: None, text="Delete a Shirt", state="disabled")
 		self.deleteButton.pack(side='left')
 		self.buttonFrame.pack(expand=1, pady=4)
-		self.scrollbar = tk.Scrollbar(self, orient='vertical')
+		self.scrollbar = tk.Scrollbar(self, orient='vertical', command=self.scroll)
 		self.idColumn = IDColumn(self)
 		self.dateColumn = DateColumn(self)
 		self.descriptionColumn = DescriptionColumn(self)
-		self.columns = [self.idColumn, self.descriptionColumn, self.dateColumn]
+		self.ratingColumn = RatingColumn(self)
+		self.columns = [self.idColumn, self.descriptionColumn, self.dateColumn, self.ratingColumn]
 		for i in self.columns:
 			i.pack(side="left")
 		self.scrollbar.pack(side="left", fill="y")
@@ -157,48 +197,60 @@ class TShirtPicker(tk.Tk):
 		# When you open the program, make the list of shirts and populate the GUI, or make a table and then do that. 
 		try:
 			for i in select('*'):
-				self.shirts.append(Shirt(i[0], i[1], i[2]))
+				self.shirts.append(Shirt(i[0], i[1], i[2], i[3]))
 			if GUI:
 				self.populate()
 		except sqlite3.Error:
-			conn = sqlite3.connect("shirts.db")
-			c = conn.cursor()
-			c.execute("create table shirts (id, description, lasttime")
-			conn.commit()
-			self.onOpen()
+			try:
+				self.convert()
+			except sqlite3.Error:
+				conn = sqlite3.connect("shirts.db")
+				c = conn.cursor()
+				c.execute("create table shirts2 (id, description, lasttime, rating)")
+				conn.commit()
+				self.onOpen(True)
+	def convert(self):
+		conn = sqlite3.connect("shirts.db")
+		c = conn.cursor()
+		temp = []
+		for i in c.execute("select * from shirts"):
+			temp.append(Shirt(i[0], i[1], i[2]))
+		c.execute("create table shirts2 (id, description, lasttime, rating)")
+		for i in temp:
+			c.execute("insert into shirts2 values(?, ?, ?, ?)", (i.id, i.description, i.lastTime, i.rating))
+		conn.commit()
+		self.onOpen(True)
 	def populate(self):
-		for i in [self.dateColumn, self.idColumn, self.descriptionColumn]:
+		for i in self.columns:
 			i.delete(0, tk.END)
 		for i in self.shirts:
-			i.addToList(self.idColumn, self.descriptionColumn, self.dateColumn)
+			i.addToList(*self.columns)
 	def clickColumn(self, event):
 		selection = event.widget.curselection()
 		if selection:
 			self.deleteButton.config(state='normal')
 			self.updateButton.config(state='normal')
-			if event.widget is not self.descriptionColumn:
-				self.descriptionColumn.selection_clear(0, self.descriptionColumn.size()-1)
-				self.descriptionColumn.selection_set(selection[0])
-			if event.widget is not self.dateColumn:
-				self.dateColumn.selection_clear(0, self.dateColumn.size()-1)
-				self.dateColumn.selection_set(selection[0])
-			if event.widget is not self.idColumn:
-				self.idColumn.selection_clear(0, self.idColumn.size()-1)
-				self.idColumn.selection_set(selection[0])
+			for i in self.columns:
+				if i != event.widget:
+					i.selection_clear(0, self.descriptionColumn.size()-1)
+					i.selection_set(selection[0])
+	def scroll(self, *args):
+		for i in self.columns:
+			i.column.yview(*args)
 class PickShirtWindow:
 	def __init__(self, master):
 		self.master = master
 		one = self.pick()
-		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+one.description+"\" ?"):
+		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+str(one.description)+"\" ?"):
 			one.wearToday()
 			master.populate()
-			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+one.description+"\" today.")
+			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+str(one.description)+"\" today.")
 		else:
 			tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
 	def pick(self):
 		weighted = []
 		for i in self.master.shirts:
-			for j in range((datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
+			for j in range(i.rating*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
 				weighted.append(i)
 		return random.choice(weighted)
 class UpdateWindow(tk.Toplevel):
@@ -216,6 +268,8 @@ class UpdateWindow(tk.Toplevel):
 		self.dateEntry = DateBox(self)
 		self.dateEntry.insert(0, self.shirt.lastTime)
 		self.dateEntry.pack()
+		self.ratingField = RatingField(self, shirt.rating)
+		self.ratingField.pack()
 		self.buttons = tk.Frame(self)
 		self.ok = tk.Button(self.buttons, text="OK", command=self.finish)
 		self.ok.pack(side="left")
@@ -226,13 +280,14 @@ class UpdateWindow(tk.Toplevel):
 		if self.dateEntry.complaining:
 			return
 		else:
-			self.shirt.update(self.descriptionBox.get(), self.dateEntry.get())
+			self.shirt.update(self.descriptionBox.get(), self.dateEntry.get(), self.ratingField.get())
 			self.master.populate()
 			self.destroy()
 # This is the shirt class. 
 class Shirt:
-	def __init__(self, id, description, lastTime):
+	def __init__(self, id, description, lastTime, rating = 3):
 		self.description = description
+		self.rating = rating
 		# If you don't know when you wore it, say you wore it a week ago. 
 		if lastTime == '':
 			self.lastTime = (datetime.datetime.today()-datetime.timedelta(days=7)).strftime("%Y-%m-%d")
@@ -245,22 +300,24 @@ class Shirt:
 				self.id = 1
 			else:
 				self.id = select('*')[-1][0]+1
-			insert(self.id, self.description, self.lastTime)
+			insert(self.id, self.description, self.lastTime, self.rating)
 		else: 
 			self.id = id
 	# This updates both the database and the python list.
 	def wearToday(self):
-		update(self.id, datetime.date.today().strftime("%Y-%m-%d"))
 		self.lastTime = datetime.date.today().strftime("%Y-%m-%d")
+		update(self.id, self.description, self.lastTime, self.rating)
 	# This is used by the tkinter list object to actually add the shirt to the GUI list. 
-	def addToList(self, idColumn, descriptionColumn, dateColumn):
+	def addToList(self, idColumn, descriptionColumn, dateColumn, ratingColumn):
 		idColumn.insert('end', self.id)
 		descriptionColumn.insert('end', self.description)
 		dateColumn.insert('end', self.lastTime)
-	def update(self, description, lastTime):
+		ratingColumn.ratingAdd("end", self.rating)
+	def update(self, description, lastTime, rating):
 		self.description = description
+		self.rating = rating
 		self.lastTime = lastTime
-		c.execute('update shirts set description=?, lasttime=? where id=?', (self.description, self.lastTime, self.id))
+		c.execute('update shirts2 set description=?, lasttime=?, rating=? where id=?', (self.description, self.lastTime, self.rating, self.id))
 		db.commit()
 class NewShirtWindow(tk.Toplevel):
 	def __init__(self, master):
@@ -277,6 +334,8 @@ class NewShirtWindow(tk.Toplevel):
 		tk.Label(self, text='When was the last day you wore the shirt, \napproxamately, in YYYY-MM-DD format? \nOr leave it blank if you don\'t know.').pack()
 		self.dateBox = DateBox(self)
 		self.dateBox.pack()
+		self.ratingField = RatingField(self)
+		self.ratingField.pack()
 		self.submit_button = tk.Button(self, text="Done", command= self.finish)
 		self.submit_button.pack(pady=5)
 	def finish(self):
@@ -285,7 +344,7 @@ class NewShirtWindow(tk.Toplevel):
 			return
 		else:
 			if self.enterDescription.get() != "" or tk.messagebox.askyesno("Empty Description", "Do you want to make a shirt with an empty description?"):
-				self.master.shirts.append(Shirt(0, self.enterDescription.get(), self.dateBox.get()))
+				self.master.shirts.append(Shirt(0, self.enterDescription.get(), self.dateBox.get(), self.ratingField.get()))
 				self.master.shirts[-1].addToList(*self.master.columns)
 				self.destroy()
 if len(sys.argv) < 2:
