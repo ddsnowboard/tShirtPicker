@@ -57,6 +57,7 @@ class Column(tk.Frame):
 			if not i == self:
 				i.column.yview_moveto(args[0])
 		self.master.scrollbar.set(*args)
+		self.master.lastScroll = args
 class IDColumn(Column):
 	def __init__(self, master):
 		Column.__init__(self, master)
@@ -166,6 +167,7 @@ class TShirtPicker(tk.Tk):
 		tk.Tk.__init__(self)
 		self.title("T-Shirt Picker")
 		self.shirts = []
+		self.lastScroll = None
 		self.resizable(0, 0)
 		self.buttonFrame = tk.Frame(self, height=15)
 		self.pickButton = tk.Button(self.buttonFrame, text="Pick a Shirt", command = lambda: PickShirtWindow(self))
@@ -219,6 +221,7 @@ class TShirtPicker(tk.Tk):
 			i.delete(0, tk.END)
 		for i in self.shirts:
 			i.addToList(*self.columns)
+		self.resetScroll()
 	def clickColumn(self, event):
 		selection = event.widget.curselection()
 		if selection:
@@ -231,6 +234,11 @@ class TShirtPicker(tk.Tk):
 	def scroll(self, *args):
 		for i in self.columns:
 			i.column.yview(*args) 
+	def resetScroll(self):
+		if self.lastScroll:
+			for i in self.columns:
+				i.column.yview_moveto(self.lastScroll[0])
+			self.scrollbar.set(*self.lastScroll)
 class Shirt:
 	def __init__(self, id, description, lastTime, rating = 3):
 		self.description = description
