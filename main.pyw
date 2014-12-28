@@ -76,47 +76,6 @@ class RatingColumn(Column):
 		self.label.config(text = "Rating")
 	def ratingAdd(self, position, value):
 		self.column.insert(position, "{}/5".format(str(value)))
-class DateBox(tk.Frame):
-	def __init__(self, master, text=""):
-		tk.Frame.__init__(self, master)
-		self.master = master
-		self.frame = tk.Frame(self)
-		self.label = tk.Label(self.frame, text=text)
-		self.label.pack(side="left")
-		self.textbox = tk.Entry(self.frame, validate='key', vcmd=(self.master.register(self.validateDate), '%P'))
-		self.textbox.pack(side="left")
-		self.today = tk.Button(self.frame, text="Today", command=self.insertToday, padx=3)
-		self.today.pack(side='left', padx=5)
-		self.frame.pack()
-		self.insert = self.textbox.insert
-		self.get = self.textbox.get
-		self.delete = self.textbox.delete
-		self.complaining = False
-		self.complaint = tk.Label(self, fg="red", text='')
-		self.complaint.pack()
-	def insertToday(self): 
-		self.delete(0, len(self.get()))
-		self.insert(0, datetime.datetime.today().strftime("%Y-%m-%d"))
-	def validateDate(self, text):
-		date = re.compile(r"\d\d\d\d-\d\d-\d\d")
-		if text == "":
-			self.complaining = False
-			self.complaint.config(text="")
-		elif date.match(text):
-			try:
-				if datetime.datetime.today() >= datetime.datetime.strptime(text, "%Y-%m-%d"):
-					self.complaint.config(text="")
-					self.complaining = False
-				else:
-					self.complaint.config(text="That date is in the future!")
-					self.complaining = True
-			except ValueError:
-				self.complaint.config(text="That date isn't properly formatted")
-				self.complaining = True
-		else:
-			self.complaint.config(text="That date isn't properly formatted")
-			self.complaining = True
-		return True
 class Star(tk.Label):
 	def __init__(self, master, status, index):
 		tk.Label.__init__(self, master)
@@ -159,12 +118,47 @@ class RatingField(tk.Frame):
 		return self.rating
 	def set(self, rating):
 		self.rating = rating
-class DeleteShirtWindow:
-	def __init__(self, master, shirt, index):
-		if tk.messagebox.askyesno("Delete", "Do you really want to delete \"{}\"?".format(shirt.description)):
-			delete(shirt.id)
-			master.shirts.pop(index)
-			master.populate()
+class DateBox(tk.Frame):
+	def __init__(self, master, text=""):
+		tk.Frame.__init__(self, master)
+		self.master = master
+		self.frame = tk.Frame(self)
+		self.label = tk.Label(self.frame, text=text)
+		self.label.pack(side="left")
+		self.textbox = tk.Entry(self.frame, validate='key', vcmd=(self.master.register(self.validateDate), '%P'))
+		self.textbox.pack(side="left")
+		self.today = tk.Button(self.frame, text="Today", command=self.insertToday, padx=3)
+		self.today.pack(side='left', padx=5)
+		self.frame.pack()
+		self.insert = self.textbox.insert
+		self.get = self.textbox.get
+		self.delete = self.textbox.delete
+		self.complaining = False
+		self.complaint = tk.Label(self, fg="red", text='')
+		self.complaint.pack()
+	def insertToday(self): 
+		self.delete(0, len(self.get()))
+		self.insert(0, datetime.datetime.today().strftime("%Y-%m-%d"))
+	def validateDate(self, text):
+		date = re.compile(r"\d\d\d\d-\d\d-\d\d")
+		if text == "":
+			self.complaining = False
+			self.complaint.config(text="")
+		elif date.match(text):
+			try:
+				if datetime.datetime.today() >= datetime.datetime.strptime(text, "%Y-%m-%d"):
+					self.complaint.config(text="")
+					self.complaining = False
+				else:
+					self.complaint.config(text="That date is in the future!")
+					self.complaining = True
+			except ValueError:
+				self.complaint.config(text="That date isn't properly formatted")
+				self.complaining = True
+		else:
+			self.complaint.config(text="That date isn't properly formatted")
+			self.complaining = True
+		return True
 class TShirtPicker(tk.Tk):
 	def __init__(self, GUI):
 		self.all = '*'
@@ -236,54 +230,7 @@ class TShirtPicker(tk.Tk):
 					i.selection_set(selection[0])
 	def scroll(self, *args):
 		for i in self.columns:
-			i.column.yview(*args)
-class PickShirtWindow:
-	def __init__(self, master):
-		self.master = master
-		one = self.pick()
-		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+str(one.description)+"\" ?"):
-			one.wearToday()
-			master.populate()
-			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+str(one.description)+"\" today.")
-		else:
-			tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
-	def pick(self):
-		weighted = []
-		for i in self.master.shirts:
-			for j in range(i.rating*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
-				weighted.append(i)
-		return random.choice(weighted)
-class UpdateWindow(tk.Toplevel):
-	def __init__(self, master, shirt):
-		tk.Toplevel.__init__(self)
-		self.focus_set()
-		self.shirt = shirt
-		self.bind("<Escape>", lambda x: self.destroy())
-		self.bind("<Return>", lambda x: self.finish())
-		tk.Label(self, text="Description").pack()
-		self.descriptionBox = tk.Entry(self)
-		self.descriptionBox.insert(0, self.shirt.description)
-		self.descriptionBox.pack()
-		tk.Label(self, text="Last worn (YYYY-MM-DD)").pack()
-		self.dateEntry = DateBox(self)
-		self.dateEntry.insert(0, self.shirt.lastTime)
-		self.dateEntry.pack()
-		self.ratingField = RatingField(self, shirt.rating)
-		self.ratingField.pack()
-		self.buttons = tk.Frame(self)
-		self.ok = tk.Button(self.buttons, text="OK", command=self.finish)
-		self.ok.pack(side="left")
-		self.cancel = tk.Button(self.buttons, text="Cancel", command = self.destroy)
-		self.cancel.pack(side="left")
-		self.buttons.pack()
-	def finish(self):
-		if self.dateEntry.complaining:
-			return
-		else:
-			self.shirt.update(self.descriptionBox.get(), self.dateEntry.get(), self.ratingField.get())
-			self.master.populate()
-			self.destroy()
-# This is the shirt class. 
+			i.column.yview(*args) 
 class Shirt:
 	def __init__(self, id, description, lastTime, rating = 3):
 		self.description = description
@@ -319,6 +266,22 @@ class Shirt:
 		self.lastTime = lastTime
 		c.execute('update shirts2 set description=?, lasttime=?, rating=? where id=?', (self.description, self.lastTime, self.rating, self.id))
 		db.commit()
+class PickShirtWindow:
+	def __init__(self, master):
+		self.master = master
+		one = self.pick()
+		if tk.messagebox.askyesno("Pick", "Do you want to wear \""+str(one.description)+"\" ?"):
+			one.wearToday()
+			master.populate()
+			tk.messagebox.showinfo("Yes", "Ok. You're wearing \""+str(one.description)+"\" today.")
+		else:
+			tk.messagebox.showinfo("No", "Ok. Press \"Pick today's shirt\" again to try again.")
+	def pick(self):
+		weighted = []
+		for i in self.master.shirts:
+			for j in range(i.rating*(datetime.datetime.today()-datetime.datetime.strptime(i.lastTime, "%Y-%m-%d")).days*3+1):
+				weighted.append(i)
+		return random.choice(weighted)
 class NewShirtWindow(tk.Toplevel):
 	def __init__(self, master):
 		tk.Toplevel.__init__(self)
@@ -347,6 +310,42 @@ class NewShirtWindow(tk.Toplevel):
 				self.master.shirts.append(Shirt(0, self.enterDescription.get(), self.dateBox.get(), self.ratingField.get()))
 				self.master.shirts[-1].addToList(*self.master.columns)
 				self.destroy()
+class UpdateWindow(tk.Toplevel):
+	def __init__(self, master, shirt):
+		tk.Toplevel.__init__(self)
+		self.focus_set()
+		self.shirt = shirt
+		self.bind("<Escape>", lambda x: self.destroy())
+		self.bind("<Return>", lambda x: self.finish())
+		tk.Label(self, text="Description").pack()
+		self.descriptionBox = tk.Entry(self)
+		self.descriptionBox.insert(0, self.shirt.description)
+		self.descriptionBox.pack()
+		tk.Label(self, text="Last worn (YYYY-MM-DD)").pack()
+		self.dateEntry = DateBox(self)
+		self.dateEntry.insert(0, self.shirt.lastTime)
+		self.dateEntry.pack()
+		self.ratingField = RatingField(self, shirt.rating)
+		self.ratingField.pack()
+		self.buttons = tk.Frame(self)
+		self.ok = tk.Button(self.buttons, text="OK", command=self.finish)
+		self.ok.pack(side="left")
+		self.cancel = tk.Button(self.buttons, text="Cancel", command = self.destroy)
+		self.cancel.pack(side="left")
+		self.buttons.pack()
+	def finish(self):
+		if self.dateEntry.complaining:
+			return
+		else:
+			self.shirt.update(self.descriptionBox.get(), self.dateEntry.get(), self.ratingField.get())
+			self.master.populate()
+			self.destroy()
+class DeleteShirtWindow:
+	def __init__(self, master, shirt, index):
+		if tk.messagebox.askyesno("Delete", "Do you really want to delete \"{}\"?".format(shirt.description)):
+			delete(shirt.id)
+			master.shirts.pop(index)
+			master.populate()
 if len(sys.argv) < 2:
 	# This is the actual logic that happens when you run the program. 
 	root = TShirtPicker(True)
