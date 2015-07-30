@@ -2,7 +2,10 @@ import sqlite3
 import datetime
 import random
 import sys
-import WillsLib
+try:
+    import WillsLib
+except ImportError:
+    print("You may need to run `git submodule init && git submodule update`")
 try:
 	import tkinter as tk
 	from tkinter import messagebox

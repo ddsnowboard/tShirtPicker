@@ -1,0 +1,3 @@
+[submodule "WillsLib"]
+	path = WillsLib
+	url = git@github.com:ddsnowboard/WillsLib.git
